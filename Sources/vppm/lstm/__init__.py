@@ -1,0 +1,1 @@
+"""VPPM-LSTM 서브패키지 — IMPLEMENTATION_PLAN_LSTM.md 참조."""

@@ -1,0 +1,13 @@
+# Docker build context 에서 대용량/불필요 경로 제외
+ORNL_Data_Origin/
+ORNL_Data_Open/
+Sources/pipeline_outputs/
+Paper/
+venv/
+**/__pycache__/
+*.pyc
+*.pyo
+.git/
+docker/Dockerfile
+docker/docker-compose.yml
+docker/.dockerignore
