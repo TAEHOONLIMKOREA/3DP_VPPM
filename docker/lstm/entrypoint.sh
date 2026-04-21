@@ -24,8 +24,15 @@ fi
 # /tmp/image_stacks 생성 (tmpfs)
 mkdir -p "${LSTM_CACHE_DIR:-/tmp/image_stacks}"
 
+# venv 마운트 확인
+VENV_PY=/workspace/venv/bin/python
+if [ ! -x "$VENV_PY" ]; then
+  echo "[entrypoint] FATAL: $VENV_PY 없음 — venv 가 마운트되지 않음" >&2
+  exit 1
+fi
+
 # GPU / torch 상태 로그
-python - <<'PY'
+$VENV_PY - <<'PY'
 import torch, sys
 print(f"[entrypoint] python={sys.version.split()[0]}  torch={torch.__version__}  "
       f"cuda_avail={torch.cuda.is_available()}  "

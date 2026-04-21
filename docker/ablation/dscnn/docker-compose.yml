@@ -1,0 +1,30 @@
+# E1: DSCNN 8피처 제거 실험
+# 산출물 → Sources/pipeline_outputs/ablation/E1_no_dscnn/
+services:
+  ablation-dscnn:
+    build:
+      context: ../../..
+      dockerfile: docker/ablation/Dockerfile
+    image: vppm-ablation:gpu
+    runtime: nvidia
+    # 호스트 UID/GID 로 실행 → 산출물이 root 소유로 떨어지는 것 방지.
+    # run.sh 가 UID_GID 를 $(id -u):$(id -g) 로 export 해 주입한다.
+    user: "${UID_GID:-1000:1000}"
+    environment:
+      # GPU 0 핀 — run_all.sh 병렬 실행 시 4장(0~3)에 그룹별 1장씩 배정
+      - NVIDIA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/workspace
+    volumes:
+      # ── 호스트 venv (torch + cuda) ──────────────────
+      - ../../../venv:/workspace/venv:ro
+      # ── 읽기 전용 입력 ───────────────────────────────
+      - ../../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
+      - ../../../Sources/pipeline_outputs/results:/workspace/Sources/pipeline_outputs/results:ro
+      # ── 쓰기 가능 출력 (ablation 전체) ───────────────
+      - ../../../Sources/pipeline_outputs/ablation:/workspace/Sources/pipeline_outputs/ablation:rw
+    shm_size: "2gb"
+    working_dir: /workspace
+    command:
+      - sh
+      - -c
+      - "exec /workspace/venv/bin/python -m Sources.vppm.ablation.run --experiment E1 ${ABLATION_EXTRA:-}"

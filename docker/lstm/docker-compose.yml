@@ -1,9 +1,7 @@
 # docker-compose.yml — VPPM-LSTM (IMPLEMENTATION_PLAN_LSTM.md §10)
 #
-# 디스크 최소화 전략:
-#   ─ :ro  원본 HDF5, 기존 features/, baseline models/  (읽기만)
-#   ─ :rw  신규 산출물만 (lstm_embeddings, models_lstm, results/vppm_lstm)
-#   ─ tmpfs /tmp  이미지 스택 캐시 (~3GB) → 호스트 디스크 증가분 0
+# 핵심 전략: 호스트 venv (torch 2.11.0 + sm_120) 를 bind mount.
+# Docker 안에서 패키지를 설치하지 않음 → 빌드 수 초, 네트워크 불필요.
 #
 services:
   vppm-lstm:
@@ -17,6 +15,9 @@ services:
       - PYTHONPATH=/workspace
       - LSTM_CACHE_DIR=/tmp/image_stacks
     volumes:
+      # ─── 호스트 venv (torch 2.11.0 + 전체 패키지) ─────────
+      - ../venv:/workspace/venv:ro
+
       # ─── 읽기 전용 (원본 + 재사용 산출물) ─────────────────
       - ../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
       - ../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
@@ -32,4 +33,3 @@ services:
       - /tmp:size=8g
     shm_size: "4gb"
     working_dir: /workspace
-    # CPU-only 환경에서는 아래 runtime/env 를 제거하고 vppm-lstm:cpu 로 빌드

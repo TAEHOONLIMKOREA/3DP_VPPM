@@ -1,0 +1,25 @@
+# E2: Temporal 센서 7피처 제거 실험
+# 산출물 → Sources/pipeline_outputs/ablation/E2_no_sensor/
+services:
+  ablation-sensor:
+    build:
+      context: ../../..
+      dockerfile: docker/ablation/Dockerfile
+    image: vppm-ablation:gpu
+    runtime: nvidia
+    user: "${UID_GID:-1000:1000}"
+    environment:
+      # GPU 1 핀 — run_all.sh 병렬 실행 시 4장(0~3)에 그룹별 1장씩 배정
+      - NVIDIA_VISIBLE_DEVICES=1
+      - PYTHONPATH=/workspace
+    volumes:
+      - ../../../venv:/workspace/venv:ro
+      - ../../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
+      - ../../../Sources/pipeline_outputs/results:/workspace/Sources/pipeline_outputs/results:ro
+      - ../../../Sources/pipeline_outputs/ablation:/workspace/Sources/pipeline_outputs/ablation:rw
+    shm_size: "2gb"
+    working_dir: /workspace
+    command:
+      - sh
+      - -c
+      - "exec /workspace/venv/bin/python -m Sources.vppm.ablation.run --experiment E2 ${ABLATION_EXTRA:-}"
