@@ -12,7 +12,10 @@ services:
       # GPU 1 핀 — run_all.sh 병렬 실행 시 4장(0~3)에 그룹별 1장씩 배정
       - NVIDIA_VISIBLE_DEVICES=1
       - PYTHONPATH=/workspace
+      - HOME=/tmp
     volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
       - ../../../venv:/workspace/venv:ro
       - ../../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
       - ../../../Sources/pipeline_outputs/results:/workspace/Sources/pipeline_outputs/results:ro

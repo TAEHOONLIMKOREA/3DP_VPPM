@@ -207,12 +207,15 @@ def write_summary_md(all_runs: dict[str, dict]) -> None:
     ABLATION_DIR.mkdir(parents=True, exist_ok=True)
     path = ABLATION_DIR / "summary.md"
 
-    # baseline 은 기존 pipeline_outputs/results/metrics_raw.json 에서 읽어옴
-    baseline_path = config.RESULTS_DIR / "metrics_raw.json"
+    # baseline(21-feat) metrics 는 리팩터 후 results/vppm_origin/ 로 옮겨졌다.
+    # 과거 경로(results/metrics_raw.json)도 fallback 으로 지원.
     baseline = None
-    if baseline_path.exists():
-        with open(baseline_path) as f:
-            baseline = json.load(f)
+    for candidate in (config.RESULTS_DIR / "vppm_origin" / "metrics_raw.json",
+                      config.RESULTS_DIR / "metrics_raw.json"):
+        if candidate.exists():
+            with open(candidate) as f:
+                baseline = json.load(f)
+            break
 
     lines = [
         "# VPPM Feature Ablation 결과 요약",

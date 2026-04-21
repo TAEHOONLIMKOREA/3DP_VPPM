@@ -14,7 +14,12 @@ services:
       # GPU 0 핀 — run_all.sh 병렬 실행 시 4장(0~3)에 그룹별 1장씩 배정
       - NVIDIA_VISIBLE_DEVICES=0
       - PYTHONPATH=/workspace
+      # 호스트 /home/taehoon 을 마운트 안 하므로 ~ 쓰는 라이브러리(matplotlib 등) 대비 HOME 재지정
+      - HOME=/tmp
     volumes:
+      # ── 호스트 user DB (UID=1001 resolve → torch getpass.getuser() 방지) ──
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
       # ── 호스트 venv (torch + cuda) ──────────────────
       - ../../../venv:/workspace/venv:ro
       # ── 읽기 전용 입력 ───────────────────────────────
