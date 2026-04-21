@@ -10,9 +10,9 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 from tqdm import tqdm
 
-from .. import config
-from ..model import VPPM
-from ..dataset import VPPMDataset, create_cv_splits
+from ..common import config
+from ..common.model import VPPM
+from ..common.dataset import VPPMDataset, create_cv_splits
 
 
 class EarlyStopper:

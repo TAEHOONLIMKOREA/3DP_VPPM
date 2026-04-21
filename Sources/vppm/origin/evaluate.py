@@ -10,9 +10,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from .. import config
-from ..model import VPPM
-from ..dataset import (
+from ..common import config
+from ..common.model import VPPM
+from ..common.dataset import (
     VPPMDataset, create_cv_splits, denormalize, normalize,
 )
 
@@ -177,6 +177,9 @@ def plot_correlation(results: dict, output_dir: Path = config.RESULTS_DIR):
     fig, axes = plt.subplots(2, 2, figsize=(12, 12))
     props = config.TARGET_PROPERTIES
 
+    # 축 하한 고정, 상한은 데이터에서 산출
+    axis_lower = {"YS": 177, "UTS": 129, "UE": 0.1, "TE": 4.2}
+
     for idx, prop in enumerate(props):
         if prop not in results:
             continue
@@ -186,9 +189,16 @@ def plot_correlation(results: dict, output_dir: Path = config.RESULTS_DIR):
         short = config.TARGET_SHORT[prop]
         unit = "MPa" if "strength" in prop else "%"
 
-        ax.hist2d(trues, preds, bins=50, cmap="hot")
-        lims = [min(trues.min(), preds.min()), max(trues.max(), preds.max())]
+        lo = axis_lower.get(short, 0)
+        hi = max(trues.max(), preds.max()) * 1.02
+        lims = [lo, hi]
+
+        ax.set_facecolor("black")
+        ax.hist2d(trues, preds, bins=80, range=[lims, lims], cmap="hot",
+                  cmin=1)
         ax.plot(lims, lims, "w--", alpha=0.7)
+        ax.set_xlim(lims)
+        ax.set_ylim(lims)
         ax.set_xlabel(f"Ground Truth ({unit})")
         ax.set_ylabel(f"Predicted ({unit})")
         ax.set_title(short)
@@ -214,8 +224,11 @@ def plot_scatter_uts(results: dict, build_ids: np.ndarray = None,
 
     fig, ax = plt.subplots(figsize=(10, 10))
     ax.scatter(trues, preds, alpha=0.3, s=10)
-    lims = [min(trues.min(), preds.min()), max(trues.max(), preds.max())]
+    lo, hi = 129, max(trues.max(), preds.max()) * 1.02
+    lims = [lo, hi]
     ax.plot(lims, lims, "k--", alpha=0.5)
+    ax.set_xlim(lims)
+    ax.set_ylim(lims)
     ax.set_xlabel("Ground Truth UTS (MPa)")
     ax.set_ylabel("Predicted UTS (MPa)")
     ax.set_title("UTS: VPPM Predictions vs Ground Truth")

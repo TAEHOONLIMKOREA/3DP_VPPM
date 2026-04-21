@@ -17,9 +17,9 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from .. import config
-from ..dataset import build_dataset, create_cv_splits, denormalize
-from ..model import VPPM_LSTM
+from ..common import config
+from ..common.dataset import build_dataset, create_cv_splits, denormalize
+from ..common.model import VPPM_LSTM
 from .dataset import VppmLstmDataset, collate, load_aligned_arrays
 
 
@@ -178,6 +178,18 @@ def evaluate_vppm_lstm(device: str | None = None) -> dict:
         json.dump(summary, f, indent=2)
     print(f"\n[L6] metrics → {config.LSTM_RESULTS_DIR / 'cv_metrics.json'}")
 
+    # per-sample prediction CSV (재플롯용)
+    for prop, r in results.items():
+        short = config.TARGET_SHORT[prop]
+        preds = np.array(r["all_predictions"])
+        trues = np.array(r["all_ground_truths"])
+        csv_path = config.LSTM_RESULTS_DIR / f"predictions_{short}.csv"
+        with open(csv_path, "w") as f:
+            f.write("ground_truth,prediction,residual\n")
+            for t, p in zip(trues, preds):
+                f.write(f"{t},{p},{p - t}\n")
+    print(f"[L6] predictions CSV → {config.LSTM_RESULTS_DIR}/predictions_*.csv")
+
     # correlation plot
     _plot_correlation(results)
     return results
@@ -188,6 +200,10 @@ def _plot_correlation(results: dict):
     if not props:
         return
     fig, axes = plt.subplots(2, 2, figsize=(12, 12))
+
+    # 축 하한 고정, 상한은 데이터에서 산출
+    axis_lower = {"YS": 177, "UTS": 129, "UE": 0.1, "TE": 4.2}
+
     for idx, prop in enumerate(config.TARGET_PROPERTIES):
         ax = axes[idx // 2, idx % 2]
         if prop not in results:
@@ -198,9 +214,17 @@ def _plot_correlation(results: dict):
         trues = np.array(r["all_ground_truths"])
         short = config.TARGET_SHORT[prop]
         unit = "MPa" if "strength" in prop else "%"
-        ax.hist2d(trues, preds, bins=50, cmap="hot")
-        lims = [min(trues.min(), preds.min()), max(trues.max(), preds.max())]
+
+        lo = axis_lower.get(short, 0)
+        hi = max(trues.max(), preds.max()) * 1.02
+        lims = [lo, hi]
+
+        ax.set_facecolor("black")
+        ax.hist2d(trues, preds, bins=80, range=[lims, lims], cmap="hot",
+                  cmin=1)
         ax.plot(lims, lims, "w--", alpha=0.7)
+        ax.set_xlim(lims)
+        ax.set_ylim(lims)
         ax.set_xlabel(f"Ground Truth ({unit})")
         ax.set_ylabel(f"Predicted ({unit})")
         ax.set_title(f"{short}  rmse={r['vppm_lstm_rmse_mean']:.1f}")

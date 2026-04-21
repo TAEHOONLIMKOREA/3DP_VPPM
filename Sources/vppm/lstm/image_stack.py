@@ -16,8 +16,8 @@ import h5py
 import numpy as np
 from tqdm import tqdm
 
-from .. import config
-from ..supervoxel import SuperVoxelGrid
+from ..common import config
+from ..common.supervoxel import SuperVoxelGrid
 
 
 # ------------------------------------------------------------

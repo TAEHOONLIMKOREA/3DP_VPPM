@@ -14,7 +14,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from .. import config
+from ..common import config
 
 
 def load_aligned_arrays(

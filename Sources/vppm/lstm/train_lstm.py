@@ -17,9 +17,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from .. import config
-from ..dataset import build_dataset, create_cv_splits, save_norm_params
-from ..model import VPPM_LSTM
+from ..common import config
+from ..common.dataset import build_dataset, create_cv_splits, save_norm_params
+from ..common.model import VPPM_LSTM
 from .dataset import VppmLstmDataset, collate, load_aligned_arrays
 
 
@@ -196,7 +196,10 @@ def train_vppm_lstm(device: str | None = None,
     # train/val row = orig_rows[train_mask] 같은 식
     config.LSTM_MODELS_DIR.mkdir(parents=True, exist_ok=True)
     config.LSTM_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    save_norm_params(ds["norm_params"], config.FEATURES_DIR / "normalization.json")
+    # normalization.json 은 features/ (read-only mount) 에 이미 존재할 수 있음
+    norm_path = config.FEATURES_DIR / "normalization.json"
+    if not norm_path.exists():
+        save_norm_params(ds["norm_params"], norm_path)
 
     training_log = {}
     for prop in config.TARGET_PROPERTIES:

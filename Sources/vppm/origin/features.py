@@ -13,8 +13,8 @@ import h5py
 from scipy.ndimage import distance_transform_edt, gaussian_filter
 from tqdm import tqdm
 
-from .. import config
-from ..supervoxel import SuperVoxelGrid
+from ..common import config
+from ..common.supervoxel import SuperVoxelGrid
 
 
 FEATURE_NAMES = [

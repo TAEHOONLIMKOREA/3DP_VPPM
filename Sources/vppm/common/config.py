@@ -7,7 +7,7 @@ from pathlib import Path
 # ============================================================
 # 경로
 # ============================================================
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 HDF5_DIR = PROJECT_ROOT / "ORNL_Data_Origin"
 OUTPUT_DIR = PROJECT_ROOT / "Sources" / "pipeline_outputs"
 FEATURES_DIR = OUTPUT_DIR / "features"
@@ -120,6 +120,17 @@ DIST_OVERHANG_SATURATION_LAYERS = 71
 SAMPLE_OVERLAP_THRESHOLD = 0.10  # 10%
 
 # ============================================================
+# Feature Ablation 그룹 (Sources/vppm/ablation/PLAN.md)
+# ============================================================
+# 0-based 인덱스. origin/features.py 의 FEATURE_NAMES 와 일치해야 함.
+FEATURE_GROUPS = {
+    "cad":    [0, 1, 2],                       # G3: distance_edge / distance_overhang / build_height
+    "dscnn":  [3, 4, 5, 6, 7, 8, 9, 10],        # G1: DSCNN 8 classes
+    "sensor": [11, 12, 13, 14, 15, 16, 17],     # G2: temporal sensors (7)
+    "scan":   [18, 19, 20],                     # G4: laser_module / return_delay / stripe_boundaries
+}
+
+# ============================================================
 # VPPM-LSTM 업그레이드 (IMPLEMENTATION_PLAN_LSTM.md)
 # ============================================================
 # 이미지 스택 채널 구성: "raw" | "raw_both" | "dscnn" | "raw+dscnn"
@@ -143,10 +154,12 @@ LSTM_NUM_WORKERS = 2
 LSTM_GRAD_CLIP = 1.0
 LSTM_WEIGHT_DECAY = 1e-4
 
-# 캐시 디렉터리: 기본은 컨테이너 내부 /tmp (tmpfs → 호스트 디스크 증가분 0)
+# 캐시 디렉터리: 프로젝트 내부 영속 저장 (리부팅해도 남음)
 import os as _os
-LSTM_CACHE_DIR = _os.environ.get("LSTM_CACHE_DIR", "/tmp/image_stacks")
-LSTM_CACHE_PERSIST = False       # True 로 바꾸면 FEATURES_DIR 근처에 저장
+LSTM_CACHE_DIR = _os.environ.get(
+    "LSTM_CACHE_DIR", str(OUTPUT_DIR / "image_stacks")
+)
+LSTM_CACHE_PERSIST = True
 
 # 학습 산출물 — plan §3 디렉터리 구조와 일치
 LSTM_EMBEDDINGS_DIR = OUTPUT_DIR / "lstm_embeddings"

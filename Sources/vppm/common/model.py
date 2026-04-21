@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from . import config
-from .lstm.sequence_model import SupervoxelLSTM
+from ..lstm.sequence_model import SupervoxelLSTM
 
 
 class VPPM(nn.Module):

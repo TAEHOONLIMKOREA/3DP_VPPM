@@ -22,10 +22,10 @@ from pathlib import Path
 # 프로젝트 루트를 path에 추가
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from Sources.vppm import config
-from Sources.vppm.supervoxel import SuperVoxelGrid, find_valid_supervoxels
+from Sources.vppm.common import config
+from Sources.vppm.common.supervoxel import SuperVoxelGrid, find_valid_supervoxels
 from Sources.vppm.origin.features import FeatureExtractor
-from Sources.vppm.dataset import build_dataset, save_norm_params
+from Sources.vppm.common.dataset import build_dataset, save_norm_params
 from Sources.vppm.origin.train import train_all
 from Sources.vppm.origin.evaluate import (
     evaluate_all, save_metrics, plot_correlation, plot_scatter_uts,
