@@ -1,155 +1,247 @@
-# VPPM Feature Ablation 실험 계획
+# VPPM Feature Ablation — 개요 · 인덱스 · 공통 설정
 
-> **목적**: VPPM 모델의 21개 입력 피처 중 실제로 예측 성능에 기여하는 피처 그룹을 식별한다.
-> 슈퍼복셀 단위 입력 피처를 소스(데이터 종류) 기준으로 4개 그룹으로 나누고,
-> 각 그룹을 제거했을 때 4개 타겟(YS / UTS / UE / TE) RMSE 변화를 측정한다.
+> **목적**: VPPM 모델의 21 개 입력 피처 중 실제로 예측 성능에 기여하는 피처 그룹/채널을 식별한다.
+> 슈퍼복셀 단위 입력 피처를 소스(데이터 종류) 기준으로 분해하고, 한 번에 한 그룹(또는 채널)을
+> 제거했을 때 4 개 타겟(YS / UTS / UE / TE) RMSE 변화를 측정한다.
 >
-> **베이스라인**: [MODEL_SUMMARY.md](../../pipeline_outputs/MODEL_SUMMARY.md) — 21-feat 기준 RMSE (5-Fold CV)
+> **기준 모델 (E0 Baseline)**: 21-feat, 5-Fold CV — [results/vppm_origin/metrics_raw.json](../../pipeline_outputs/results/vppm_origin/metrics_raw.json)
+>
+> **종합 결과 보고서**: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md) — 배경부터 해석·후속까지 14 섹션.
 
 ---
 
-## 1. 피처 그룹 정의
+## 1. 실험 인덱스
 
-논문 Table A4 및 [Sources/vppm/config.py](../config.py) 정의를 기준으로 21개 피처를 4개 소스 그룹으로 묶는다.
+실험 계획은 **실험 단위 (혹은 실험 군 단위) 로 개별 md 파일** 로 관리한다. 본 파일은 공통 설정과
+인덱스 역할만 담당한다.
 
-| 그룹 | 피처 수 | 피처 인덱스 | 피처명 | 제거 시 남는 차원 |
-|:----:|:------:|:----------:|--------|:---------------:|
-| **G1. DSCNN** | 8 | 4–11 | seg_powder / seg_printed / seg_recoater_streaking / seg_edge_swelling / seg_debris / seg_super_elevation / seg_soot / seg_excessive_melting | 13 |
-| **G2. Temporal Sensor (CSV)** | 7 | 12–18 | layer_print_time / top_gas_flow_rate / bottom_gas_flow_rate / module_oxygen / build_plate_temperature / bottom_flow_temperature / actual_ventilator_flow_rate | 14 |
-| **G3. CAD / 좌표** | 3 | 1–3 | distance_from_edge / distance_from_overhang / build_height | 18 |
-| **G4. 스캔 (Laser)** | 3 | 19–21 | laser_module / laser_return_delay / laser_stripe_boundaries | 18 |
+### 1.1 주요 그룹 ablation (E1–E4)
 
-> 참고: G4 의 `laser_return_delay`, `laser_stripe_boundaries` 는 현재 placeholder(0) — 실제 기여도는 사실상 `laser_module` 단독의 효과에 가깝다.
+| ID | 계획 문서 | 제거 | n_feats | 핵심 결과 요약 |
+|:--:|:----------|:-----|:-------:|:--------------|
+| E1 | [PLAN_E1_no_dscnn.md](./PLAN_E1_no_dscnn.md)  | G1 DSCNN 8ch      | 13 | ΔUTS **+7.46**, UE 가 naive 수준 붕괴 |
+| E2 | [PLAN_E2_no_sensor.md](./PLAN_E2_no_sensor.md) | G2 Sensor 7ch    | 14 | ΔYS **+2.51** 최대, B1.4 에서 특히 의존 |
+| E3 | [PLAN_E3_no_cad.md](./PLAN_E3_no_cad.md)      | G3 CAD 3ch        | 18 | ΔRMSE 모두 < 0.7 (CAD 는 DSCNN 에 흡수됨) |
+| E4 | [PLAN_E4_no_scan.md](./PLAN_E4_no_scan.md)    | G4 Scan 3ch*      | 18 | ΔUTS **−1.04** (placeholder 때문, 재구현 필요) |
+
+\* E4 의 scan 그룹은 3 채널 중 2 개가 placeholder=0 상태로 학습됨.
+
+### 1.2 조합 ablation (E13)
+
+| ID | 계획 문서 | 제거 | n_feats | 핵심 결과 |
+|:--:|:----------|:-----|:-------:|:---------|
+| E13 | [PLAN_E13_combined.md](./PLAN_E13_combined.md) | G1 ∪ G2 (15ch) | 6 | **독립 (additive)** — ΔE13 ≈ ΔE1 + ΔE2, 모두 naive 이하 |
+
+### 1.3 DSCNN 서브 ablation (E5–E12 + E23/E24)
+
+단일 파일로 10 개 실험 계획:
+
+- [PLAN_dscnn_subablation.md](./PLAN_dscnn_subablation.md) — **미실행** (최우선 후속 실험)
+
+| 범위 | 성격 | 핵심 질문 |
+|:----|:-----|:---------|
+| E5–E12  | 8 개 클래스 **단독** 제거 | DSCNN 연신율 지배(E1) 의 원천이 어느 결함 클래스인가? |
+| E23     | 결함 6 채널 묶음 (normal 2개만 남김) | 연신율 정보는 결함 클래스에 집중되어 있는가? |
+| E24     | Normal 2 채널 묶음 (defect 6개만 남김) | Normal 클래스는 redundant 인가? |
+
+> 가설: `seg_recoater_streaking` (B1.5 리코터) 와 `seg_excessive_melting` (B1.2 Keyhole) 이 상위 기여자.
+
+### 1.4 센서 서브 ablation (E14–E22)
+
+단일 파일로 9 개 실험 계획:
+
+- [PLAN_sensor_subablation.md](./PLAN_sensor_subablation.md)
+
+| 범위 | 성격 | 핵심 결과 |
+|:----|:-----|:---------|
+| E14–E20 | 7 개 채널 **단독** 제거 | 모든 채널이 **Marginal** — 단일 기여 없음 |
+| E21     | 가스 유량 3 채널 묶음     | ΔUTS −0.94 (noise-level) |
+| E22     | 온도 2 채널 묶음         | ΔUTS ±0 (무의미) |
+
+> 결론: 센서는 **집단 효과** — 단독 채널은 marginal 하지만 E2 (전체 7 개 제거) 에서 ΔUTS +5.75.
+
+### 1.5 스캔 서브 ablation (E30–E33, 정식 재실험 계획)
+
+- [PLAN_G4_scan_reengineering.md](./PLAN_G4_scan_reengineering.md) — **실행 전** (PLAN §4 전제조건 선행 필요)
+
+| ID | 제거 | 상태 |
+|:--:|:----|:----:|
+| E30 | — (Baseline v2, 21 피처 재학습) | 계획 완료 |
+| E31 | scan 전체 3ch (v2)               | placeholder 상태 수치만 존재 |
+| E32 | scan_return_delay (#20)         | 〃 |
+| E33 | scan_stripe_boundaries (#21)    | 〃 |
+
+### 1.6 실행 도커 인프라
+
+실험군별 도커 디렉터리:
+
+| 실험군 | 도커 경로 |
+|:------|:---------|
+| E1 (dscnn) | [docker/ablation/dscnn/](../../../docker/ablation/dscnn/) |
+| E2 (sensor) | [docker/ablation/sensor/](../../../docker/ablation/sensor/) |
+| E3 (cad)   | [docker/ablation/cad/](../../../docker/ablation/cad/) |
+| E4 (scan)  | [docker/ablation/scan/](../../../docker/ablation/scan/) |
+| E14–E22    | [docker/ablation/sensor_sub/](../../../docker/ablation/sensor_sub/) |
+| E5–E12 + E23/E24 | `docker/ablation/dscnn_sub/` — **미구축** (PLAN §3.3 참조) |
+| E31–E33    | [docker/ablation/scan_sub/](../../../docker/ablation/scan_sub/) |
+| E1–E4 병렬 | `docker/ablation/run_all.sh` |
 
 ---
 
-## 2. 실험 설계
+## 2. 피처 그룹 정의 (공통)
 
-### 2.1 실험 목록
+논문 Table A4 및 [config.py:126-155](../common/config.py#L126-L155) 기준, 21 개 피처를 4 개 소스 그룹으로 묶는다.
 
-| ID | 실험명 | 제거 그룹 | 사용 피처 수 | 가설 |
-|:--:|-------|:--------:|:-----------:|------|
-| E0 | **Baseline** | — | 21 | 기준 성능 (기존 결과 재사용) |
-| E1 | No-DSCNN | G1 | 13 | DSCNN 결함 예측치가 주요 결함성 정보이므로 **UE/TE 악화 큼** |
-| E2 | No-Sensor | G2 | 14 | 빌드 단위 공정 상태 반영 — 빌드 간 차이 설명력이 줄어 **전반적 악화** |
-| E3 | No-CAD | G3 | 18 | 엣지/오버행 거리, 빌드 높이 — 형상 민감도 큰 **YS/UTS 에 영향** |
-| E4 | No-Scan | G4 | 18 | placeholder 2개 포함 — **악화 미미** 예상 (유효 1개만 제거) |
+| 그룹 | 피처 수 | idx (0-based) | 내용 | 제거 후 n_feats |
+|:----:|:------:|:-------------:|:----|:--------------:|
+| **G1. DSCNN**              | 8 | 3–10  | 8 개 결함 세그멘테이션 클래스 | 13 |
+| **G2. Temporal Sensor**    | 7 | 11–17 | 프린트 시간 / 유량 / 산소 / 온도 | 14 |
+| **G3. CAD / 좌표**         | 3 | 0–2   | distance_edge / distance_overhang / build_height | 18 |
+| **G4. 스캔 (Laser)**       | 3 | 18–20 | laser_module / return_delay* / stripe_boundaries* | 18 |
 
-### 2.2 제어 변수 (모든 실험 공통)
+\* G4 의 return_delay 와 stripe_boundaries 는 현재 placeholder(0). 상세: [PLAN_G4_scan_reengineering.md](./PLAN_G4_scan_reengineering.md)
 
-- 데이터: `Sources/pipeline_outputs/features/all_features.npz` (19,313 유효 슈퍼복셀)
-- CV: 동일 5-Fold (seed=42, **샘플 단위 분할**)
-- 모델: VPPM 2-layer MLP, hidden=128, dropout=0.1
-- 학습 하이퍼파라미터: [config.py](../config.py) 의 기본값 (LR=1e-3, batch=1000, max_epoch=5000, patience=50)
-- 손실: L1 (MAE), 정규화 공간 [-1, 1]
-- 평가: 원본 스케일 RMSE, 샘플별 예측 집계는 "최소값" (기존과 동일)
+### 2.1 피처별 상세 정보
 
-> **주의**: 피처 제거 시 재정규화가 필요하다. 전체 21차원 통계로 정규화된 기존 `normalization.json` 을 그대로 사용하지 말고, **각 실험에서 남은 차원만으로 f_min/f_max 를 다시 계산**해 [-1, 1] 로 스케일한다.
+21 개 피처 전체 표는 [FULL_REPORT.md §2.2](../../pipeline_outputs/ablation/FULL_REPORT.md) 참조.
 
-### 2.3 실험당 산출물
+---
 
-각 실험은 4 속성 × 5 folds = **20 모델** 을 생성한다. 저장 위치:
+## 3. 제어 변수 (모든 실험 공통)
+
+- **데이터**: [Sources/pipeline_outputs/features/all_features.npz](../../pipeline_outputs/features/) (36,047 슈퍼복셀, 6,373 유효 샘플)
+- **CV**: 동일 5-Fold, seed=42, **샘플 단위 분할** — 모든 실험이 같은 분할 재사용
+- **모델**: VPPM 2-layer MLP, hidden=128, dropout=0.1
+- **학습 하이퍼파라미터**: [config.py](../common/config.py)
+  - Adam (lr=1e-3, β=(0.9, 0.999), ε=1e-4)
+  - batch=1000, MAX_EPOCHS=5000, early-stop patience=50
+- **손실**: L1 (MAE), 정규화 공간 [-1, 1]
+- **평가**: 원본 스케일 RMSE, 샘플별 예측 집계는 "최소값" (보수적 추정, 논문 Section 3.1)
+
+### 3.1 재정규화 원칙
+
+피처 제거 시 **반드시 재정규화** 한다:
+- 전체 21 차원 통계로 정규화된 기존 `normalization.json` 을 **그대로 사용하지 말 것**
+- 각 실험에서 **남은 차원만으로 f_min/f_max 를 재계산** 해 [-1, 1] 로 스케일
+- 이는 [run.py](./run.py) 의 `build_dataset()` 재호출로 자동 처리
+
+### 3.2 재현성
+
+- `torch.manual_seed` 는 명시적으로 고정하지 않음 — fold 간 weight init 가 자연스럽게 다름 (표본 변동 반영)
+- 같은 실험을 재실행하면 RMSE 가 ±1 MPa 수준에서 재현 — fold std 와 같은 크기
+- 확실한 재현이 필요한 경우 seed 고정 + 3 회 반복 권장
+
+---
+
+## 4. 실험당 공통 산출물 구조
+
+각 실험은 4 속성 × 5 folds = **20 모델**을 생성한다. 저장 레이아웃:
 
 ```
 Sources/pipeline_outputs/ablation/
-├── E1_no_dscnn/
-│   ├── models/        # vppm_{YS,UTS,UE,TE}_fold{0-4}.pt
-│   ├── normalization.json
-│   └── metrics.json
-├── E2_no_sensor/
-├── E3_no_cad/
-├── E4_no_scan/
-└── summary.md         # 4개 실험 통합 비교표
+├── E{id}_no_{group}/
+│   ├── experiment_meta.json       # exp_id, drop_group, dropped_idx, n_feats, n_samples
+│   ├── features/
+│   │   └── normalization.json     # 재정규화 통계
+│   ├── models/
+│   │   ├── vppm_{YS,UTS,UE,TE}_fold{0-4}.pt
+│   │   └── training_log.json      # fold 별 수렴 epoch
+│   └── results/
+│       ├── metrics_raw.json       # fold별 + 평균 RMSE (원본 스케일)
+│       ├── metrics_summary.json
+│       ├── predictions_{YS,UTS,UE,TE}.csv
+│       ├── correlation_plots.png
+│       └── scatter_plot_uts.png
+├── summary.md                      # 전 실험 자동 생성 요약 (--rebuild-summary)
+└── FULL_REPORT.md                  # 수동 작성 종합 보고서
 ```
 
 ---
 
-## 3. 구현 방식
+## 5. 해석 기준 (공통)
 
-### 3.1 피처 인덱스 상수 추가
+### 5.1 ΔRMSE 정의
 
-`Sources/vppm/config.py` 에 그룹별 인덱스를 상수로 추가한다 (0-based).
+ΔRMSE = E*i* − E0. **양수일수록 해당 그룹이 중요**. 부호 해석:
 
-```python
-FEATURE_GROUPS = {
-    "cad":     [0, 1, 2],                      # G3
-    "dscnn":   [3, 4, 5, 6, 7, 8, 9, 10],      # G1
-    "sensor":  [11, 12, 13, 14, 15, 16, 17],   # G2
-    "scan":    [18, 19, 20],                   # G4
-}
-```
+| 부호 | 의미 |
+|:---:|:----|
+| Δ > 0, 큼 | 해당 그룹이 **핵심** 기여 (E1, E2 사례) |
+| 0 < Δ < 0.5 MPa | **Marginal** — 기여 있으나 작음 (E3 사례) |
+| Δ ≈ 0 | 기여 없음 또는 noise (E14–E22 단독 사례) |
+| Δ < 0 | **역효과** — 해당 그룹이 학습을 방해했음 (E4 placeholder 사례) |
 
-### 3.2 실행 스크립트
+### 5.2 통계적 유의성
 
-`Sources/vppm/ablation/run.py` 를 신규 작성한다. 골격:
+- fold std (σ) 대비 |ΔRMSE| 비교:
+  - |Δ| > 2σ : 유의
+  - σ < |Δ| < 2σ : 경향성
+  - |Δ| < σ : noise
+- 정식 통계 검정 (paired fold bootstrap 등) 은 현재 미수행 — 후속 과제
 
-```python
-# 1) all_features.npz 로드
-# 2) drop_group 에 해당하는 컬럼을 features 에서 제거
-# 3) build_dataset() 을 새 features 로 호출 → 재정규화
-# 4) 출력 디렉터리를 ablation/E*_*/ 로 바꿔 train_all() 호출
-# 5) evaluate_all() 실행 → metrics.json 저장
-```
+### 5.3 내재 측정오차 참고선
 
-CLI 사용 예:
+| 속성 | 측정오차 | 의미 |
+|:---:|--------:|:----|
+| YS  | 16.6 MPa | 재측정 표준편차 — 물리적 RMSE 하한 |
+| UTS | 15.6 MPa | 〃 |
+| UE  | 1.73 %   | 〃 |
+| TE  | 2.92 %   | 〃 |
+
+Baseline RMSE 가 내재오차의 수 배 — UE 는 7.4× 로 가장 큰 격차 (개선 여지 큼).
+
+### 5.4 빌드별 잔차 분해
+
+일부 그룹은 특정 빌드에서만 유의미할 수 있다 (B1.4 스패터, B1.5 리코터 손상 등). 빌드별 분해:
 
 ```bash
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E1  # no DSCNN
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E2  # no sensor
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E3  # no CAD
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E4  # no scan
-./venv/bin/python -m Sources.vppm.ablation.run --all            # 4개 연속
+./venv/bin/python -m Sources.vppm.ablation.analyze_per_build --experiment E{id}
+# → Sources/pipeline_outputs/ablation/E{id}_no_{group}/per_build_analysis.md
 ```
 
-### 3.3 모델 입력 차원 대응
-
-`VPPM(n_feats=...)` 는 이미 생성자에서 입력 차원을 받으므로 수정 불필요.
-[run_pipeline.py:143](../run_pipeline.py#L143) 의 `run_train(n_feats=...)` 경로가 이미 `min(n_feats, features.shape[1])` 로 동작하니 ablation 용 경로도 동일 방식으로 구현한다.
-
 ---
 
-## 4. 비교 및 해석
-
-### 4.1 결과 요약 테이블 템플릿
-
-| 실험 | 사용 피처 | YS RMSE (MPa) | UTS RMSE (MPa) | UE RMSE (%) | TE RMSE (%) |
-|:----:|:--------:|:-------------:|:--------------:|:-----------:|:-----------:|
-| E0 Baseline | 21 | 28.7 ± 0.6 | 60.7 ± 2.6 | 12.8 ± 0.3 | 15.5 ± 0.2 |
-| E1 No-DSCNN | 13 |  ?  |  ?  |  ?  |  ?  |
-| E2 No-Sensor | 14 |  ?  |  ?  |  ?  |  ?  |
-| E3 No-CAD | 18 |  ?  |  ?  |  ?  |  ?  |
-| E4 No-Scan | 18 |  ?  |  ?  |  ?  |  ?  |
-
-### 4.2 해석 기준
-
-- **ΔRMSE = E*i* − E0** 로 정의. 양수일수록 해당 그룹이 중요.
-- **내재 측정오차** 선(YS 16.6 / UTS 15.6 / UE 1.73 / TE 2.92) 을 Reference 로 함께 표기한다.
-- **Fold 별 분산**도 기록한다 — 그룹 제거 후 분산이 크게 늘면 "부분적으로만 기여하는 피처" 로 해석.
-- 모든 타겟에서 ΔRMSE 가 0.5 MPa(또는 0.1 %) 이내이면 **해당 그룹은 현행 형태로는 유의미하지 않음** → 향후 다음 중 하나를 고려:
-  1. 피처 공학을 다시 설계 (예: G4 placeholder 를 실제 값으로 구현)
-  2. 해당 그룹 드롭 → 경량화된 모델 채택
-
-### 4.3 추가 관찰 포인트
-
-- **강도(YS/UTS) vs 연성(UE/TE)** 민감도 차이 — 논문에선 연성이 결함에 더 민감하다고 보고. G1 제거 시 UE/TE 가 YS/UTS 보다 더 악화되는지 확인.
-- **수렴 에포크 변화** — 피처가 줄어 under-determined 이면 early-stop 이 더 일찍 걸릴 수 있다. `training_log.json` 에서 평균 에포크 확인.
-- **빌드별 잔차** — 일부 그룹은 특정 빌드(B1.4 스패터, B1.5 리코터 손상)에서만 유의미할 수 있으니 빌드별 RMSE 분해를 권장.
-
----
-
-## 5. 실행 순서
-
-1. `Sources/vppm/config.py` 에 `FEATURE_GROUPS` 상수 추가.
-2. `Sources/vppm/run_ablation.py` 작성 (피처 드롭 + 재정규화 + 학습 + 평가 래퍼).
-3. E1 → E2 → E3 → E4 순으로 실행 (각 실험 약 20~30분 소요 예상, GPU 기준).
-4. `Sources/pipeline_outputs/ablation/summary.md` 에 4.1 표를 채워 업데이트.
-5. 필요 시 E5 (모든 placeholder 포함 피처 드롭), E6 (DSCNN + sensor 동시 제거 등 조합) 실험 확장.
-
----
-
-## 6. 리스크와 한계
+## 6. 공통 리스크와 한계
 
 - **데이터 누출**: CV 분할은 반드시 `sample_ids` 기준이어야 한다 (기존 로직 유지).
-- **재정규화 일관성**: 학습·검증·테스트 공통의 f_min/f_max 를 학습 데이터 전체 기준으로 계산하는 것은 논문과 동일한 관행. 폴드별로 다시 계산하는 변형은 본 실험에선 하지 않는다.
-- **G4 의 한계**: placeholder 2개 포함이므로, G4 제거가 "스캔 데이터 전체 효과"를 의미하지는 않는다. 결과 해석 시 이 한계를 명시한다.
-- **하이퍼파라미터 고정**: 차원이 줄면 최적 hidden 이 달라질 수 있지만, 비교 공정성을 위해 baseline 과 동일 구조(128)를 유지한다. 후속 실험에서 hidden tuning 을 분리 수행할 수 있다.
+- **샘플 단위 CV 의 한계**: 같은 빌드 샘플이 train/val 에 섞임 — **빌드 간 일반화** 는 측정 불가.
+  실제 배포 시엔 Leave-One-Build-Out (LOBO) CV 로 재검증 필요.
+- **하이퍼파라미터 고정**: 피처 수가 줄면 최적 hidden 이 달라질 수 있으나, 비교 공정성을 위해
+  baseline 과 동일 구조(128)를 유지. 후속 실험에서 hidden tuning 분리 수행 가능.
+- **G4 의 placeholder 한계**: 피처 19, 20 이 상수 0 이므로 E4 는 사실상 `laser_module` 단독 효과만 측정.
+  정식 해석은 [PLAN_G4_scan_reengineering.md](./PLAN_G4_scan_reengineering.md) 실행 후 가능.
+- **5 빌드 밖 일반화 불가**: 결과는 본 데이터셋(SS 316L, Concept Laser M2, 특정 공정 윈도우) 에 한정.
+
+---
+
+## 7. 후속 실험 로드맵
+
+| 우선순위 | 실험 | 계획 문서 | 상태 |
+|:-------:|:----|:---------|:----:|
+| 1 | DSCNN 서브 ablation (E5–E12 + E23/E24) | [PLAN_dscnn_subablation.md](./PLAN_dscnn_subablation.md) | 계획 완료, 실행 대기 |
+| 2 | PLAN_G4 정식 실험 (E30–E33) | [PLAN_G4_scan_reengineering.md](./PLAN_G4_scan_reengineering.md) | 계획 완료, 구현 대기 |
+| 3 | LOBO CV                         | 미계획 | — |
+| 4 | E14–E22 seed 반복              | 미계획 | — |
+| 5 | Hidden size sweep              | 미계획 | — |
+
+상세는 [FULL_REPORT.md §13](../../pipeline_outputs/ablation/FULL_REPORT.md) 참조.
+
+---
+
+## 8. 파일 구조 참고
+
+```
+Sources/vppm/ablation/
+├── PLAN.md                              # (이 파일) — 개요·인덱스·공통 설정
+├── PLAN_E1_no_dscnn.md                  # E1 계획 + 결과
+├── PLAN_E2_no_sensor.md                 # E2 계획 + 결과
+├── PLAN_E3_no_cad.md                    # E3 계획 + 결과
+├── PLAN_E4_no_scan.md                   # E4 계획 + 결과
+├── PLAN_E13_combined.md                 # E13 조합 계획
+├── PLAN_dscnn_subablation.md            # E5–E12 + E23/E24 DSCNN 서브 계획 (실행 전)
+├── PLAN_sensor_subablation.md           # E14–E22 센서 서브 계획 + 결과 요약
+├── PLAN_G4_scan_reengineering.md        # E30–E33 스캔 재구현 계획 (실행 전)
+├── run.py                               # 실행 러너 (--experiment / --all / --rebuild-summary)
+├── analyze_per_build.py                 # 빌드별 잔차 분해 스크립트
+└── __init__.py
+```

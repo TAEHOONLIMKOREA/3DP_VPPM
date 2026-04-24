@@ -48,10 +48,38 @@ ABLATION_DIR = config.OUTPUT_DIR / "ablation"
 
 # 실험 정의: (exp_id, drop_group, 설명)
 EXPERIMENTS = {
-    "E1": ("dscnn",  "No-DSCNN — DSCNN 8피처 제거"),
-    "E2": ("sensor", "No-Sensor — Temporal 센서 7피처 제거"),
-    "E3": ("cad",    "No-CAD — CAD/좌표 3피처 제거"),
-    "E4": ("scan",   "No-Scan — 스캔 3피처 제거 (placeholder 2개 포함)"),
+    "E1":  ("dscnn",        "No-DSCNN — DSCNN 8피처 제거"),
+    "E2":  ("sensor",       "No-Sensor — Temporal 센서 7피처 제거"),
+    "E3":  ("cad",          "No-CAD — CAD/좌표 3피처 제거"),
+    "E4":  ("scan",         "No-Scan — 스캔 3피처 제거 (placeholder 2개 포함)"),
+    "E13": ("dscnn_sensor", "No-DSCNN+Sensor — G1∪G2 15피처 제거 (남는 피처 6개)"),
+    # --- DSCNN 서브 채널 ablation (PLAN_dscnn_subablation.md) ---
+    "E5":  ("dscnn_powder",             "No-Powder — 미용융 분말 제거 (LOF inverse proxy)"),
+    "E6":  ("dscnn_printed",            "No-Printed — 정상 영역 제거"),
+    "E7":  ("dscnn_recoater_streaking", "No-Streaking — 리코터 줄무늬 제거 (B1.5 핵심 후보)"),
+    "E8":  ("dscnn_edge_swelling",      "No-EdgeSwelling — 엣지 팽창 제거"),
+    "E9":  ("dscnn_debris",             "No-Debris — 잔해물 제거 (B1.4 관련)"),
+    "E10": ("dscnn_super_elevation",    "No-SuperElevation — 과도 돌출 제거"),
+    "E11": ("dscnn_soot",               "No-Soot — 매연 제거"),
+    "E12": ("dscnn_excessive_melting",  "No-ExcessiveMelt — 과다 용융 제거 (B1.2 Keyhole 핵심 후보)"),
+    "E23": ("dscnn_defects_all",        "No-DefectsAll — DSCNN 결함 6채널 일괄 제거 (normal 2개만 남김)"),
+    "E24": ("dscnn_normal",             "No-DSCNNNormal — DSCNN normal 2채널 제거 (defect 6개만 남김)"),
+    # --- 센서 서브 채널 ablation (PLAN_sensor_subablation.md) ---
+    "E14": ("sensor_print_time",   "No-PrintTime — 레이어 프린트 시간 제거"),
+    "E15": ("sensor_top_flow",     "No-TopFlow — 상단 가스 유량 제거"),
+    "E16": ("sensor_bottom_flow",  "No-BottomFlow — 하단 가스 유량 제거"),
+    "E17": ("sensor_oxygen",       "No-Oxygen — 산소 농도 제거"),
+    "E18": ("sensor_plate_temp",   "No-PlateTemp — 플레이트 온도 제거"),
+    "E19": ("sensor_flow_temp",    "No-FlowTemp — 가스 온도 제거"),
+    "E20": ("sensor_ventilator",   "No-Ventilator — 환풍기 유량 제거"),
+    "E21": ("sensor_gas_flow_all", "No-GasFlowAll — 유량 3채널(top/bottom/ventilator) 일괄 제거"),
+    "E22": ("sensor_thermal_all",  "No-ThermalAll — 온도 2채널(plate/flow) 일괄 제거"),
+    # --- 스캔(G4) 재구현 후 ablation (PLAN_G4_scan_reengineering.md) ---
+    # 전제: features.py 의 #20/#21 placeholder 를 실제 구현으로 교체하고 all_features.npz 재추출 완료.
+    # E30(Baseline v2)은 별도 파이프라인(run_pipeline)이라 여기엔 등록하지 않는다.
+    "E31": ("scan",                   "v2 No-Scan — 실구현 G4 3피처 제거 (E4 재실험)"),
+    "E32": ("scan_return_delay",      "v2 No-ReturnDelay — #20 단독 제거"),
+    "E33": ("scan_stripe_boundaries", "v2 No-StripeBoundary — #21 단독 제거"),
 }
 
 

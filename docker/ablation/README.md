@@ -24,10 +24,23 @@ docker/ablation/
 ├── cad/                # E3 — CAD/좌표 3 피처 제거
 │   ├── docker-compose.yml
 │   └── run.sh
-└── scan/               # E4 — 스캔 3 피처 제거 (placeholder 2개 포함)
-    ├── docker-compose.yml
-    └── run.sh
+├── scan/               # E4 — 스캔 3 피처 제거 (placeholder 2개 포함)
+│   ├── docker-compose.yml
+│   └── run.sh
+├── sensor_sub/         # E14~E22 — 센서 서브 채널 9종
+│   ├── README.md       # 상세 — PLAN_sensor_subablation.md 와 같이 볼 것
+│   ├── docker-compose.yml   # EXPERIMENT_ID / NVIDIA_VISIBLE_DEVICES 파라미터
+│   ├── run.sh               # 단일 실험
+│   └── run_all.sh           # 4-GPU 3배치 병렬
+└── scan_sub/           # E31~E33 — 스캔(G4) 재구현 후 ablation
+    ├── README.md       # 상세 + 전제 단계 — PLAN_G4_scan_reengineering.md 와 같이 볼 것
+    ├── docker-compose.yml   # EXPERIMENT_ID / NVIDIA_VISIBLE_DEVICES 파라미터
+    ├── run.sh               # 단일 실험
+    └── run_all.sh           # 3-GPU 단일 배치 병렬
 ```
+
+> **주의 (scan_sub)**: E31~E33 실행 전에 `scan_features.py` 구현 → 피처 재추출 → baseline v2
+> 재학습이 **호스트에서** 선행되어야 한다. 상세는 [scan_sub/README.md](./scan_sub/README.md) 참조.
 
 ## 볼륨 매핑 (모든 그룹 동일)
 

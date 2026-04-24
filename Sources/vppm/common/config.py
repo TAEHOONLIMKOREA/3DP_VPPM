@@ -130,6 +130,49 @@ FEATURE_GROUPS = {
     "scan":   [18, 19, 20],                     # G4: laser_module / return_delay / stripe_boundaries
 }
 
+# 조합 ablation (PLAN_E13_combined.md)
+FEATURE_GROUPS["dscnn_sensor"] = FEATURE_GROUPS["dscnn"] + FEATURE_GROUPS["sensor"]  # 15개
+
+# 센서 서브 ablation (PLAN_sensor_subablation.md) — 개별 7채널 + 묶음 2개
+FEATURE_GROUPS_SENSOR_SUB = {
+    "sensor_print_time":    [11],          # E14
+    "sensor_top_flow":      [12],          # E15
+    "sensor_bottom_flow":   [13],          # E16
+    "sensor_oxygen":        [14],          # E17
+    "sensor_plate_temp":    [15],          # E18
+    "sensor_flow_temp":     [16],          # E19
+    "sensor_ventilator":    [17],          # E20
+    "sensor_gas_flow_all":  [12, 13, 17],  # E21: 유량 3채널
+    "sensor_thermal_all":   [15, 16],       # E22: 온도 2채널
+}
+FEATURE_GROUPS.update(FEATURE_GROUPS_SENSOR_SUB)
+
+# DSCNN 서브 ablation (PLAN_dscnn_subablation.md) — 개별 8채널 + 묶음 2개
+FEATURE_GROUPS_DSCNN_SUB = {
+    # 1단계: 개별 채널 (E5~E12)
+    "dscnn_powder":             [3],   # E5
+    "dscnn_printed":            [4],   # E6
+    "dscnn_recoater_streaking": [5],   # E7  — B1.5 리코터 손상 핵심 후보
+    "dscnn_edge_swelling":      [6],   # E8
+    "dscnn_debris":             [7],   # E9  — B1.4 스패터 관련
+    "dscnn_super_elevation":    [8],   # E10
+    "dscnn_soot":               [9],   # E11
+    "dscnn_excessive_melting":  [10],  # E12 — B1.2 Keyhole 핵심 후보
+    # 2단계: 카테고리 묶음
+    "dscnn_defects_all":        [5, 6, 7, 8, 9, 10],  # E23: 결함 6채널 (Normal 2개만 남김)
+    "dscnn_normal":             [3, 4],                # E24: Normal 2채널 (Defect 6개만 남김)
+}
+FEATURE_GROUPS.update(FEATURE_GROUPS_DSCNN_SUB)
+
+# 스캔(G4) 서브 ablation (PLAN_G4_scan_reengineering.md)
+# 주의: 이 실험들은 features.py 의 placeholder(#20 return_delay, #21 stripe_boundaries)를
+#       실제 알고리즘으로 구현하고 `all_features.npz` 를 v2 로 재추출한 뒤 실행해야 유의미하다.
+FEATURE_GROUPS_SCAN_SUB = {
+    "scan_return_delay":       [19],  # E32: #20 (0-based idx 19) 단독 제거
+    "scan_stripe_boundaries":  [20],  # E33: #21 (0-based idx 20) 단독 제거
+}
+FEATURE_GROUPS.update(FEATURE_GROUPS_SCAN_SUB)
+
 # ============================================================
 # VPPM-LSTM 업그레이드 (IMPLEMENTATION_PLAN_LSTM.md)
 # ============================================================
