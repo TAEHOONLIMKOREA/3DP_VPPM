@@ -36,15 +36,16 @@
 
 단일 파일로 10 개 실험 계획:
 
-- [PLAN_dscnn_subablation.md](./PLAN_dscnn_subablation.md) — **미실행** (최우선 후속 실험)
+- [PLAN_dscnn_subablation.md](./PLAN_dscnn_subablation.md) — **부분 실행 (E5~E8 완료, E9~E12·E23·E24 대기)**
 
-| 범위 | 성격 | 핵심 질문 |
-|:----|:-----|:---------|
-| E5–E12  | 8 개 클래스 **단독** 제거 | DSCNN 연신율 지배(E1) 의 원천이 어느 결함 클래스인가? |
-| E23     | 결함 6 채널 묶음 (normal 2개만 남김) | 연신율 정보는 결함 클래스에 집중되어 있는가? |
-| E24     | Normal 2 채널 묶음 (defect 6개만 남김) | Normal 클래스는 redundant 인가? |
+| 범위 | 성격 | 상태 | 핵심 발견 / 질문 |
+|:----|:-----|:----:|:--------------|
+| E5–E8   | Normal 2 + Defect 2 단독 제거 | ✅ 완료 | **가설 반전**: Normal 2 채널 Critical (ΔUE +1.40~1.47), Defect 2 채널 Marginal |
+| E9–E12  | Defect 4 채널 단독 제거 | ⏳ 대기 | E12 (excessive_melting) 가 B1.2 Keyhole 의 핵심인가? |
+| E23     | 결함 6 채널 묶음 (normal 2개만 남김) | ⏳ 대기 | **결정적 실험**: 결함 정보는 Defect 채널에 집중되어 있는가? |
+| E24     | Normal 2 채널 묶음 (defect 6개만 남김) | ⏳ 대기 | **결정적 실험**: Normal 채널이 결함 통합 신호로 기능하는가? |
 
-> 가설: `seg_recoater_streaking` (B1.5 리코터) 와 `seg_excessive_melting` (B1.2 Keyhole) 이 상위 기여자.
+> 잠정 결론: DSCNN 의 핵심 기여는 "어떤 결함이냐"보다 "결함이 얼마나 있느냐" — Normal 채널이 통합 결함률 신호로 작용 중.
 
 ### 1.4 센서 서브 ablation (E14–E22)
 
@@ -81,8 +82,8 @@
 | E2 (sensor) | [docker/ablation/sensor/](../../../docker/ablation/sensor/) |
 | E3 (cad)   | [docker/ablation/cad/](../../../docker/ablation/cad/) |
 | E4 (scan)  | [docker/ablation/scan/](../../../docker/ablation/scan/) |
+| E5–E12 + E23/E24 | [docker/ablation/dscnn_sub/](../../../docker/ablation/dscnn_sub/) |
 | E14–E22    | [docker/ablation/sensor_sub/](../../../docker/ablation/sensor_sub/) |
-| E5–E12 + E23/E24 | `docker/ablation/dscnn_sub/` — **미구축** (PLAN §3.3 참조) |
 | E31–E33    | [docker/ablation/scan_sub/](../../../docker/ablation/scan_sub/) |
 | E1–E4 병렬 | `docker/ablation/run_all.sh` |
 
@@ -218,10 +219,10 @@ Baseline RMSE 가 내재오차의 수 배 — UE 는 7.4× 로 가장 큰 격차
 
 | 우선순위 | 실험 | 계획 문서 | 상태 |
 |:-------:|:----|:---------|:----:|
-| 1 | DSCNN 서브 ablation (E5–E12 + E23/E24) | [PLAN_dscnn_subablation.md](./PLAN_dscnn_subablation.md) | 계획 완료, 실행 대기 |
+| 1 | DSCNN 서브 잔여 6 실험 (E9–E12, E23, E24) | [PLAN_dscnn_subablation.md](./PLAN_dscnn_subablation.md) | E5–E8 완료, 잔여 대기 — **즉시 실행 가능** |
 | 2 | PLAN_G4 정식 실험 (E30–E33) | [PLAN_G4_scan_reengineering.md](./PLAN_G4_scan_reengineering.md) | 계획 완료, 구현 대기 |
 | 3 | LOBO CV                         | 미계획 | — |
-| 4 | E14–E22 seed 반복              | 미계획 | — |
+| 4 | E14–E22 + E5–E8 seed 반복      | 미계획 | — |
 | 5 | Hidden size sweep              | 미계획 | — |
 
 상세는 [FULL_REPORT.md §13](../../pipeline_outputs/ablation/FULL_REPORT.md) 참조.

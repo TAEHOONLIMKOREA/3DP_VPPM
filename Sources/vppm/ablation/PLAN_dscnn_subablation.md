@@ -267,7 +267,91 @@ E24 (Normal 2개 제거) 가 E0 와 거의 동일하면 → Normal 클래스는 
 
 ---
 
-## 9. 연관 문서
+## 9. 부분 실행 결과 (2026-04-25)
+
+10 개 계획 실험 중 **E5~E8 (4 개) 만 완료**. 나머지 6 개 (E9~E12, E23, E24) 미실행.
+
+### 9.1 RMSE 표
+
+| 실험 | 채널 | 카테고리 | YS (MPa) | UTS (MPa) | UE (%) | TE (%) |
+|:---:|:----|:--------:|:--------:|:---------:|:------:|:------:|
+| E0 Baseline | —              | —      | 28.66 ± 0.62 | 60.72 ± 2.59 | 12.79 ± 0.27 | 15.46 ± 0.20 |
+| **E5** | seg_powder (3)  | Normal | 29.23 ± 1.03 | **64.76 ± 1.57** | **14.19 ± 0.34** | **16.76 ± 0.23** |
+| **E6** | seg_printed (4) | Normal | 29.84 ± 1.31 | **64.96 ± 2.23** | **14.26 ± 0.24** | **16.72 ± 0.25** |
+| E7 | seg_recoater_streaking (5) | Defect | 29.16 ± 0.89 | 60.34 ± 2.24 | 13.02 ± 0.20 | 15.76 ± 0.23 |
+| E8 | seg_edge_swelling (6)      | Defect | 28.50 ± 0.91 | 60.07 ± 2.98 | 13.10 ± 0.27 | 15.78 ± 0.18 |
+| **E1** | **전체 8 채널 (ref)** | —  | **31.04 ± 1.27** | **68.19 ± 2.26** | **15.19 ± 0.20** | **18.13 ± 0.28** |
+
+### 9.2 ΔRMSE 및 판정
+
+| 실험 | ΔYS | ΔUTS | ΔUE | ΔTE | UE 판정 | UTS 판정 |
+|:---:|:---:|:----:|:---:|:---:|:-------:|:--------:|
+| E5 powder              | +0.57 | +4.03 | +1.40 | +1.31 | **Critical**   | Contributing |
+| E6 printed             | +1.18 | +4.24 | +1.47 | +1.27 | **Critical**   | Contributing |
+| E7 recoater_streaking  | +0.50 | −0.39 | +0.23 | +0.31 | Marginal       | Marginal (개선) |
+| E8 edge_swelling       | −0.17 | −0.65 | +0.31 | +0.32 | Marginal       | Marginal (개선) |
+
+판정 기준 (§2.3):
+- UE Critical: ΔUE ≥ 1.20  /  Contributing: 0.48 ≤ ΔUE < 1.20  /  Marginal: < 0.48
+- UTS Critical: ΔUTS ≥ 3.73  /  Contributing: 1.49 ≤ ΔUTS < 3.73  /  Marginal: < 1.49
+
+### 9.3 핵심 발견 — **가설 부분 반박**
+
+§1 의 가설은 다음과 같았다:
+
+> "Normal 클래스(`powder`, `printed`) 는 inverse 지표라 상대적으로 기여 작음.
+> Defect 클래스 (특히 `recoater_streaking`, `excessive_melting`) 가 상위 기여자."
+
+E5~E8 결과는 **반대 패턴**을 보임:
+
+1. **Normal 2 채널이 Critical** — `seg_powder` 단독 제거로 ΔUE +1.40 (E1 전체 8 채널 효과의 58%).
+   `seg_printed` 도 동일 수준 (ΔUE +1.47).
+2. **Defect 2 채널은 Marginal** — `seg_recoater_streaking` (B1.5 핵심 후보) 와 `seg_edge_swelling` 모두
+   noise-level (UE/UTS 모두 fold std 이내).
+
+### 9.4 잠정 해석
+
+**Normal 채널이 통합 결함 신호 역할**:
+- `seg_printed` ≈ 1 − Σ(defects). 정상률 = 1 - 결함률 의 대수적 관계로, **단일 Normal 채널이
+  6 결함 채널의 정보를 압축**해 담고 있을 가능성.
+- `seg_powder` 는 LOF (lack of fusion) 의 직접 inverse 지표. 미용융 분말 비율은 다공성 → 강도/연성
+  예측의 핵심 신호.
+- 결과적으로 모델은 "어떤 결함이냐" 가 아닌 "결함이 얼마나 있느냐" 를 학습.
+
+### 9.5 미실행 6 실험의 결정적 역할
+
+다음 실험들이 가설 검증에 필수:
+
+| 실험 | 채널 | 검증 포인트 |
+|:---:|:----|:-----------|
+| **E12** | seg_excessive_melting | B1.2 Keyhole 빌드 핵심 후보. 단독 Critical 이면 §1 가설 부분 회복 |
+| **E23** | dscnn_defects_all (6ch 묶음) | **결정적 실험**. ΔUE 가 E1 (+2.40) 에 근접 → "결함 클래스 집단이 지배" / 작음 → "Normal 채널이 결함 정보 인코딩" |
+| **E24** | dscnn_normal (2ch 묶음)      | **결정적 실험**. ΔUE 가 크면 (>1.5) → Normal 지배 가설 확정 / 작으면 → §1 가설 회복 |
+| E9  | seg_debris (B1.4 스패터) | per-build 분해로 B1.4 ΔRMSE 최대 확인 |
+| E10 | seg_super_elevation       | Defect 단독이 모두 Marginal 인지 추가 검증 |
+| E11 | seg_soot                  | 〃 |
+
+E5~E8 의 4σ-수준 비교 및 fold std 값을 보면:
+- E5/E6 의 Critical 판정은 ΔUE 1.40~1.47 vs fold std 1.27~1.45 (E1 기준) → **1σ 수준** 으로 강한 유의성 아님.
+- 따라서 **seed 반복 실험** 을 함께 수행해 신뢰도 확보 권장.
+
+### 9.6 다음 단계
+
+```bash
+cd docker/ablation/dscnn_sub
+./run_all.sh    # 잔여 6 실험 (E9~E12, E23, E24) 자동 실행 — 4-GPU 병렬 ~45–60분
+```
+
+각 실험 완료 후 빌드별 분해:
+```bash
+for E in E5 E6 E7 E8 E9 E10 E11 E12 E23 E24; do
+  ./venv/bin/python -m Sources.vppm.ablation.analyze_per_build --experiment $E
+done
+```
+
+---
+
+## 10. 연관 문서
 
 - 상위 그룹 실험: [PLAN_E1_no_dscnn.md](./PLAN_E1_no_dscnn.md) — 전체 8 채널 제거 (ΔUE +2.40, ΔTE +2.67)
 - 센서 서브 실험: [PLAN_sensor_subablation.md](./PLAN_sensor_subablation.md) — 유사한 2단계 설계

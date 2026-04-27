@@ -27,6 +27,11 @@ docker/ablation/
 ├── scan/               # E4 — 스캔 3 피처 제거 (placeholder 2개 포함)
 │   ├── docker-compose.yml
 │   └── run.sh
+├── dscnn_sub/          # E5~E12 + E23/E24 — DSCNN 8채널 + 2 묶음
+│   ├── README.md       # 상세 — PLAN_dscnn_subablation.md 와 같이 볼 것
+│   ├── docker-compose.yml   # EXPERIMENT_ID / NVIDIA_VISIBLE_DEVICES 파라미터
+│   ├── run.sh               # 단일 실험
+│   └── run_all.sh           # 4-GPU 3배치 병렬
 ├── sensor_sub/         # E14~E22 — 센서 서브 채널 9종
 │   ├── README.md       # 상세 — PLAN_sensor_subablation.md 와 같이 볼 것
 │   ├── docker-compose.yml   # EXPERIMENT_ID / NVIDIA_VISIBLE_DEVICES 파라미터
