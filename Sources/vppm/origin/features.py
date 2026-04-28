@@ -15,6 +15,11 @@ from tqdm import tqdm
 
 from ..common import config
 from ..common.supervoxel import SuperVoxelGrid
+from .scan_features import (
+    build_melt_time_map,
+    compute_return_delay_map,
+    compute_stripe_boundaries_map,
+)
 
 
 FEATURE_NAMES = [
@@ -111,9 +116,12 @@ class FeatureExtractor:
                         lm = laser_modules[pid]
                         features[pidx, 18] = 0.0 if lm == 1 else 1.0
 
-                # --- 피처 #20-21: 스캔 경로 기반 (단순화 버전) ---
-                features[block_indices, 19] = 0.0  # placeholder
-                features[block_indices, 20] = 0.0  # placeholder
+                # --- 피처 #20-21: 스캔 경로 기반 (실 구현) ---
+                scan_accum = self._extract_scan_features_block(
+                    f, block_voxels, l0, l1
+                )
+                features[block_indices, 19] = scan_accum[:, 0]  # return_delay
+                features[block_indices, 20] = scan_accum[:, 1]  # stripe_boundaries
 
         return features
 
@@ -228,3 +236,53 @@ class FeatureExtractor:
         valid = counts > 0
         accum[valid] /= counts[valid, np.newaxis]
         return accum.astype(np.float32)
+
+    def _extract_scan_features_block(self, f, block_voxels, l0, l1):
+        """z-block 내 스캔 경로 피처 (return_delay, stripe_boundaries) 추출.
+
+        각 레이어별로 melt-time 맵을 즉시 계산 → 이웃 max-min 필터 / Sobel RMS →
+        해당 z-block 내 모든 슈퍼복셀 영역의 평균을 누적. 영구 캐시 없이 메모리만 사용.
+
+        Returns:
+            (n_voxels, 2) — [return_delay, stripe_boundaries], NaN 가능 (스캔 데이터 없음).
+        """
+        n = len(block_voxels)
+        accum = np.zeros((n, 2), dtype=np.float64)
+        counts = np.zeros(n, dtype=np.int64)
+
+        # 1mm 커널 = round(1mm / pixel_size_mm) — 보통 8 px
+        kernel_px = max(1, int(round(1.0 / config.PIXEL_SIZE_MM)))
+        img_shape = (self.grid.image_h, self.grid.image_w)
+
+        for layer in range(l0, l1):
+            key = f"scans/{layer}"
+            if key not in f:
+                continue
+            scans = f[key][...]
+            if len(scans) == 0:
+                continue
+
+            mt = build_melt_time_map(scans, img_shape, config.PIXEL_SIZE_MM)
+            rd_map = compute_return_delay_map(mt, kernel_px=kernel_px, sat_s=0.5)
+            sb_map = compute_stripe_boundaries_map(mt)
+
+            for vi in range(n):
+                ix, iy = block_voxels[vi, 0], block_voxels[vi, 1]
+                r0, r1, c0, c1 = self.grid.get_pixel_range(ix, iy)
+                rd_patch = rd_map[r0:r1, c0:c1]
+                sb_patch = sb_map[r0:r1, c0:c1]
+
+                # 슈퍼복셀 영역 안에 melt 된 픽셀이 하나라도 있으면 평균 누적
+                rd_valid = ~np.isnan(rd_patch)
+                if rd_valid.any():
+                    accum[vi, 0] += rd_patch[rd_valid].mean()
+                    # sb_map 은 NaN 없이 0 으로 채워짐 — 같은 valid mask 사용
+                    accum[vi, 1] += sb_patch[rd_valid].mean()
+                    counts[vi] += 1
+
+        # 스캔 데이터가 전혀 없는 슈퍼복셀 → 0 ("활동 없음" 의미).
+        # NaN 으로 두면 build_dataset 의 NaN 마스크가 해당 슈퍼복셀 전체를 드롭함.
+        out = np.zeros((n, 2), dtype=np.float32)
+        ok = counts > 0
+        out[ok] = (accum[ok] / counts[ok, np.newaxis]).astype(np.float32)
+        return out
