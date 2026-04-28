@@ -182,41 +182,11 @@ def run_train(n_feats: int = config.N_FEATURES):
     plot_scatter_uts(results)
 
 
-def run_lstm_image_stack(builds, channels=None, patch_px=None, cache_dir=None):
-    """Phase L1: 이미지 스택 캐시 생성."""
-    from Sources.vppm.lstm.image_stack import build_stacks_cache, verify_alignment
-    out = build_stacks_cache(
-        builds=builds,
-        channels_name=channels,
-        patch_px=patch_px,
-        cache_dir=cache_dir,
-    )
-    verify_alignment(out)
-    return out
-
-
-def run_lstm_train(device=None):
-    """Phase L5: VPPM-LSTM 학습."""
-    from Sources.vppm.lstm.train_lstm import train_vppm_lstm
-    return train_vppm_lstm(device=device)
-
-
-def run_lstm_eval(device=None):
-    """Phase L6: 평가 + 임베딩 export."""
-    from Sources.vppm.lstm.eval_lstm import evaluate_vppm_lstm, export_lstm_embeddings
-    evaluate_vppm_lstm(device=device)
-    try:
-        export_lstm_embeddings(device=device)
-    except Exception as e:
-        print(f"[L6] embedding export skipped: {e}")
-
-
 def main():
-    parser = argparse.ArgumentParser(description="VPPM / VPPM-LSTM Pipeline")
+    parser = argparse.ArgumentParser(description="VPPM Pipeline")
     parser.add_argument(
         "--phase",
-        choices=["features", "train", "evaluate",
-                 "image-stack", "train-lstm", "eval-lstm", "all"],
+        choices=["features", "train", "evaluate", "all"],
         help="Run specific phase",
     )
     parser.add_argument("--builds", nargs="+", default=list(config.BUILDS.keys()),
@@ -226,45 +196,12 @@ def main():
                         help="Quick test with B1.2 only")
     parser.add_argument("--n-feats", type=int, default=config.N_FEATURES,
                         help="Number of features (for ablation)")
-
-    # VPPM-LSTM 옵션
-    parser.add_argument("--use-lstm", action="store_true",
-                        help="Run VPPM-LSTM upgrade pipeline")
-    parser.add_argument("--channels", default=None,
-                        help="LSTM input channels: raw|raw_both|dscnn|raw+dscnn")
-    parser.add_argument("--patch-px", type=int, default=None,
-                        help="LSTM patch size in pixels")
-    parser.add_argument("--cache-dir", default=None,
-                        help="Image stack cache dir (default /tmp/image_stacks)")
     args = parser.parse_args()
 
     if args.quick_test:
         args.builds = ["B1.2"]
         args.all = True
 
-    # ============================================================
-    # VPPM-LSTM branch
-    # ============================================================
-    if args.use_lstm:
-        device = "cuda" if __import__("torch").cuda.is_available() else "cpu"
-        phase = args.phase or "all"
-
-        if phase in ("all", "image-stack"):
-            run_lstm_image_stack(
-                builds=args.builds,
-                channels=args.channels,
-                patch_px=args.patch_px,
-                cache_dir=args.cache_dir,
-            )
-        if phase in ("all", "train-lstm"):
-            run_lstm_train(device=device)
-        if phase in ("all", "eval-lstm"):
-            run_lstm_eval(device=device)
-        return
-
-    # ============================================================
-    # Baseline VPPM branch (기존)
-    # ============================================================
     if args.all:
         for bid in args.builds:
             extract_features_for_build(bid)

@@ -1,0 +1,38 @@
+# Baseline VPPM v2 학습 — 21-feat (실 구현 scan 포함) 5-Fold CV
+# train + evaluate 를 순차 실행. 산출물: pipeline_outputs/{models,results/vppm_origin}/
+#
+# 사용법:
+#   ./run.sh             # GPU 0 기본
+#   ./run.sh --gpu 2     # GPU 2
+services:
+  baseline:
+    build:
+      context: ../..
+      dockerfile: docker/ablation/Dockerfile      # 기존 이미지 재사용
+    image: vppm-ablation:gpu
+    runtime: nvidia
+    user: "${UID_GID:-1000:1000}"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ../../venv:/workspace/venv:ro
+      # baseline 학습 시 normalization.json 을 새로 저장하므로 features/ 는 rw 필요
+      - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:rw
+      - ../../Sources/pipeline_outputs/models:/workspace/Sources/pipeline_outputs/models:rw
+      - ../../Sources/pipeline_outputs/results:/workspace/Sources/pipeline_outputs/results:rw
+      - ../../Sources/pipeline_outputs/ablation:/workspace/Sources/pipeline_outputs/ablation:rw
+    shm_size: "2gb"
+    working_dir: /workspace
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "[baseline] Phase 4 — train then evaluate"
+        /workspace/venv/bin/python -m Sources.vppm.run_pipeline --phase train
+        /workspace/venv/bin/python -m Sources.vppm.run_pipeline --phase evaluate
+        echo "[baseline] Done. Results → Sources/pipeline_outputs/results/vppm_origin/"

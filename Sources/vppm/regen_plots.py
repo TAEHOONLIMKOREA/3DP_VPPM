@@ -2,7 +2,6 @@
 correlation_plots.png 재생성 스크립트.
 
 - origin: results/predictions_{YS,UTS,UE,TE}.csv 에서 읽어 재플롯
-- lstm:   results/vppm_lstm/predictions_*.csv 가 있으면 재플롯
 
 축 하한 고정(사용자 요청):
   YS=177, UTS=129, UE=0.1, TE=4.2
@@ -73,22 +72,5 @@ def plot_correlation(results_dir: Path, titles: dict[str, str] | None = None,
 
 
 if __name__ == "__main__":
-    import json
-    import sys
     base = Path(__file__).resolve().parent.parent / "pipeline_outputs" / "results"
-
-    # --- origin ---
     plot_correlation(base)
-
-    # --- lstm (있으면) ---
-    lstm_dir = base / "vppm_lstm"
-    titles = None
-    cv = lstm_dir / "cv_metrics.json"
-    if cv.exists():
-        m = json.loads(cv.read_text())
-        titles = {s: f"rmse={float(m[s]['vppm_lstm_rmse'].split()[0]):.1f}"
-                  for s in SHORTS if s in m}
-    out = plot_correlation(lstm_dir, titles=titles)
-    if out is None:
-        print(f"[skip] lstm: predictions_*.csv 가 {lstm_dir} 에 없음")
-        sys.exit(0)

@@ -24,7 +24,10 @@ docker/ablation/
 ├── cad/                # E3 — CAD/좌표 3 피처 제거
 │   ├── docker-compose.yml
 │   └── run.sh
-├── scan/               # E4 — 스캔 3 피처 제거 (placeholder 2개 포함)
+├── scan/               # E4 — 스캔 3 피처 제거 (laser_module + return_delay + stripe_boundaries)
+│   ├── docker-compose.yml
+│   └── run.sh
+├── combined/           # E13 — DSCNN+Sensor 동시 제거 (15 피처 제거, 6 피처 학습)
 │   ├── docker-compose.yml
 │   └── run.sh
 ├── dscnn_sub/          # E5~E12 + E23/E24 — DSCNN 8채널 + 2 묶음
@@ -38,7 +41,7 @@ docker/ablation/
 │   ├── run.sh               # 단일 실험
 │   └── run_all.sh           # 4-GPU 3배치 병렬
 └── scan_sub/           # E31~E33 — 스캔(G4) 재구현 후 ablation
-    ├── README.md       # 상세 + 전제 단계 — PLAN_G4_scan_reengineering.md 와 같이 볼 것
+    ├── README.md       # 상세 — scan 서브 채널 ablation
     ├── docker-compose.yml   # EXPERIMENT_ID / NVIDIA_VISIBLE_DEVICES 파라미터
     ├── run.sh               # 단일 실험
     └── run_all.sh           # 3-GPU 단일 배치 병렬

@@ -1,35 +1,99 @@
-# docker-compose.yml — VPPM-LSTM (IMPLEMENTATION_PLAN_LSTM.md §10)
-#
-# 핵심 전략: 호스트 venv (torch 2.11.0 + sm_120) 를 bind mount.
-# Docker 안에서 패키지를 설치하지 않음 → 빌드 수 초, 네트워크 불필요.
-#
+# Sample-LSTM (v2) — 4 phase 가 같은 이미지를 공유.
+# Phase L2/L3/L4 는 LSTM_MODE 환경변수 (fwd|bidir) 로 단/양방향 분리.
+# 사용 예 (run_*.sh 권장):
+#   LSTM_MODE=fwd   docker compose run --rm lstm-train
+#   LSTM_MODE=bidir docker compose run --rm lstm-train
+x-base: &base
+  build:
+    context: ../..
+    dockerfile: docker/lstm/Dockerfile
+  image: vppm-lstm:gpu
+  runtime: nvidia
+  user: "${UID_GID:-1000:1000}"
+  shm_size: "4gb"
+  working_dir: /workspace
+
 services:
-  vppm-lstm:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    image: vppm-lstm:gpu
-    runtime: nvidia
+  # ── Phase L1 — sample_stacks/ 캐시 빌드 (mode 무관) ──────
+  lstm-cache:
+    <<: *base
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
+      - LSTM_PHASE=cache
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}
       - PYTHONPATH=/workspace
-      - LSTM_CACHE_DIR=/tmp/image_stacks
+      - HOME=/tmp
     volumes:
-      # ─── 호스트 venv (torch 2.11.0 + 전체 패키지) ─────────
-      - ../venv:/workspace/venv:ro
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ../../venv:/workspace/venv:ro
+      - ../../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
+      - ../../Sources/pipeline_outputs/sample_stacks:/workspace/Sources/pipeline_outputs/sample_stacks:rw
+    command:
+      - sh
+      - -c
+      - "exec /workspace/venv/bin/python -m Sources.vppm.lstm.sample_stack ${LSTM_EXTRA:-}"
 
-      # ─── 읽기 전용 (원본 + 재사용 산출물) ─────────────────
-      - ../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
-      - ../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
-      - ../Sources/pipeline_outputs/models:/workspace/Sources/pipeline_outputs/models:ro
+  # ── Phase L2 — LSTM 5-Fold 학습 (mode 별) ────────────────
+  lstm-train:
+    <<: *base
+    environment:
+      - LSTM_PHASE=train
+      - LSTM_MODE=${LSTM_MODE:?LSTM_MODE 를 'fwd' 또는 'bidir' 로 지정하세요}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ../../venv:/workspace/venv:ro
+      - ../../Sources/pipeline_outputs/sample_stacks:/workspace/Sources/pipeline_outputs/sample_stacks:ro
+      - ../../Sources/pipeline_outputs/models_lstm:/workspace/Sources/pipeline_outputs/models_lstm:rw
+      - ../../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
+    command:
+      - sh
+      - -c
+      - "exec /workspace/venv/bin/python -m Sources.vppm.lstm.train --mode ${LSTM_MODE} ${LSTM_EXTRA:-}"
 
-      # ─── 쓰기 가능 (신규 산출물만, 총 ~35MB) ──────────────
-      - ../Sources/pipeline_outputs/lstm_embeddings:/workspace/Sources/pipeline_outputs/lstm_embeddings:rw
-      - ../Sources/pipeline_outputs/models_lstm:/workspace/Sources/pipeline_outputs/models_lstm:rw
-      - ../Sources/pipeline_outputs/results/vppm_lstm:/workspace/Sources/pipeline_outputs/results/vppm_lstm:rw
+  # ── Phase L3 — 임베딩 추출 + 21→22 npz 통합 (mode 별) ──
+  lstm-extract:
+    <<: *base
+    environment:
+      - LSTM_PHASE=extract
+      - LSTM_MODE=${LSTM_MODE:?LSTM_MODE 를 'fwd' 또는 'bidir' 로 지정하세요}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ../../venv:/workspace/venv:ro
+      - ../../Sources/pipeline_outputs/sample_stacks:/workspace/Sources/pipeline_outputs/sample_stacks:ro
+      - ../../Sources/pipeline_outputs/models_lstm:/workspace/Sources/pipeline_outputs/models_lstm:ro
+      - ../../Sources/pipeline_outputs/lstm_embeddings:/workspace/Sources/pipeline_outputs/lstm_embeddings:rw
+      - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:rw
+      - ../../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
+    command:
+      - sh
+      - -c
+      - "exec /workspace/venv/bin/python -m Sources.vppm.lstm.extract --mode ${LSTM_MODE} ${LSTM_EXTRA:-}"
 
-    # image_stacks 캐시는 tmpfs(RAM) 에만 존재 → 호스트 디스크 0
-    tmpfs:
-      - /tmp:size=8g
-    shm_size: "4gb"
-    working_dir: /workspace
+  # ── Phase L4 — 22 차원 VPPM 재학습 + 평가 (mode 별) ────
+  lstm-vppm:
+    <<: *base
+    environment:
+      - LSTM_PHASE=vppm
+      - LSTM_MODE=${LSTM_MODE:?LSTM_MODE 를 'fwd' 또는 'bidir' 로 지정하세요}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ../../venv:/workspace/venv:ro
+      - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
+      - ../../Sources/pipeline_outputs/results:/workspace/Sources/pipeline_outputs/results:rw
+      - ../../Sources/pipeline_outputs/models_lstm:/workspace/Sources/pipeline_outputs/models_lstm:rw
+    command:
+      - sh
+      - -c
+      - "exec /workspace/venv/bin/python -m Sources.vppm.lstm.run_vppm --mode ${LSTM_MODE} ${LSTM_EXTRA:-}"

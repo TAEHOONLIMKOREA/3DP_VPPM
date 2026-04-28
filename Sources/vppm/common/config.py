@@ -164,9 +164,7 @@ FEATURE_GROUPS_DSCNN_SUB = {
 }
 FEATURE_GROUPS.update(FEATURE_GROUPS_DSCNN_SUB)
 
-# 스캔(G4) 서브 ablation (PLAN_G4_scan_reengineering.md)
-# 주의: 이 실험들은 features.py 의 placeholder(#20 return_delay, #21 stripe_boundaries)를
-#       실제 알고리즘으로 구현하고 `all_features.npz` 를 v2 로 재추출한 뒤 실행해야 유의미하다.
+# 스캔(G4) 서브 ablation — laser_module / return_delay / stripe_boundaries 단독
 FEATURE_GROUPS_SCAN_SUB = {
     "scan_return_delay":       [19],  # E32: #20 (0-based idx 19) 단독 제거
     "scan_stripe_boundaries":  [20],  # E33: #21 (0-based idx 20) 단독 제거
@@ -174,37 +172,72 @@ FEATURE_GROUPS_SCAN_SUB = {
 FEATURE_GROUPS.update(FEATURE_GROUPS_SCAN_SUB)
 
 # ============================================================
-# VPPM-LSTM 업그레이드 (IMPLEMENTATION_PLAN_LSTM.md)
+# Sample-LSTM 업그레이드 (PLAN_LSTM_v2.md)
 # ============================================================
-# 이미지 스택 채널 구성: "raw" | "raw_both" | "dscnn" | "raw+dscnn"
-LSTM_INPUT_CHANNELS = "raw+dscnn"
-# 슈퍼복셀 패치 크기 (픽셀). sv_xy_pixels(=8)와 맞추는 것이 기본.
-LSTM_PATCH_PX = 8
+# 입력: 샘플별 raw camera 이미지 시퀀스 (channel 0 = 용융 직후 단일).
+# 출력: 샘플 단위 LSTM 임베딩 — d_embed 차원 vector. 21 차원 핸드크래프트 피처에 concat (broadcast).
+# 최종 입력 차원: 21 + LSTM_D_EMBED.
+#
+# 4 가지 모드를 지원 — 단/양방향 × 임베딩 1-dim/16-dim 조합:
+#   fwd1    : forward,       d_embed=1   → 22 차원
+#   bidir1  : bidirectional, d_embed=1   → 22 차원
+#   fwd16   : forward,       d_embed=16  → 37 차원
+#   bidir16 : bidirectional, d_embed=16  → 37 차원   (= 이전 v1 설계와 동일)
+# 각 모드의 산출물은 별도 폴더에 분리됨.
+import os as _os
+
+# 카메라 채널 — 0(용융 직후) 만 사용 (DSCNN 채널 없음)
+LSTM_RAW_CHANNEL = 0
+# 샘플 bbox crop 후 resize 사이즈 (정사각)
+LSTM_CROP_SIZE = 64
 # CNN 인코더 출력 차원
 LSTM_D_CNN = 64
-# LSTM 임베딩 차원 — 최종 피처는 21 + LSTM_D_EMBED
-LSTM_D_EMBED = 16
-LSTM_BIDIRECTIONAL = True
+# LSTM 내부 hidden — bidirectional 이면 실효 출력은 2*LSTM_D_HIDDEN. 모드 간 비교 일관성 위해 고정.
+LSTM_D_HIDDEN = 8
 LSTM_POOLING = "last"           # last | mean
 LSTM_NUM_LAYERS = 1
 
-# 학습 하이퍼파라미터 (이미지 텐서 대비 작은 배치, GPU 필수)
+# 학습 하이퍼파라미터 (가변 길이 시퀀스, GPU 필수)
 LSTM_LR = 1e-3
-LSTM_BATCH_SIZE = 64
+LSTM_BATCH_SIZE = 8             # 샘플 단위라 배치 작게
 LSTM_MAX_EPOCHS = 200
 LSTM_EARLY_STOP_PATIENCE = 20
 LSTM_NUM_WORKERS = 2
 LSTM_GRAD_CLIP = 1.0
 LSTM_WEIGHT_DECAY = 1e-4
 
-# 캐시 디렉터리: 프로젝트 내부 영속 저장 (리부팅해도 남음)
-import os as _os
+# 캐시 디렉터리: 샘플별 (T, H, W) 시퀀스 텐서 (mode 무관)
 LSTM_CACHE_DIR = _os.environ.get(
-    "LSTM_CACHE_DIR", str(OUTPUT_DIR / "image_stacks")
+    "LSTM_CACHE_DIR", str(OUTPUT_DIR / "sample_stacks")
 )
 LSTM_CACHE_PERSIST = True
 
-# 학습 산출물 — plan §3 디렉터리 구조와 일치
+# 학습 산출물 — mode 별로 분리.
 LSTM_EMBEDDINGS_DIR = OUTPUT_DIR / "lstm_embeddings"
 LSTM_MODELS_DIR = OUTPUT_DIR / "models_lstm"
-LSTM_RESULTS_DIR = OUTPUT_DIR / "results" / "vppm_lstm"
+LSTM_RESULTS_DIR = OUTPUT_DIR / "results"
+
+# 모드 사양 — 모든 모드는 hidden=8 공유. proj 만 다르게.
+LSTM_MODES = {
+    "fwd1":    {"bidirectional": False, "d_embed": 1},
+    "bidir1":  {"bidirectional": True,  "d_embed": 1},
+    "fwd16":   {"bidirectional": False, "d_embed": 16},
+    "bidir16": {"bidirectional": True,  "d_embed": 16},
+}
+LSTM_VALID_MODES = tuple(LSTM_MODES.keys())
+
+
+def lstm_paths(mode: str) -> dict:
+    """Mode 별 산출물 path + 모델 설정."""
+    if mode not in LSTM_MODES:
+        raise ValueError(f"mode must be one of {LSTM_VALID_MODES}, got {mode!r}")
+    spec = LSTM_MODES[mode]
+    return {
+        **spec,
+        "n_feats":         N_FEATURES + spec["d_embed"],
+        "models_dir":      LSTM_MODELS_DIR / mode,
+        "embeddings_dir":  LSTM_EMBEDDINGS_DIR / mode,
+        "embeddings_npz":  LSTM_EMBEDDINGS_DIR / mode / "embeddings.npz",
+        "features_npz":    FEATURES_DIR / f"all_features_with_lstm_{mode}.npz",
+        "results_dir":     LSTM_RESULTS_DIR / f"vppm_lstm_{mode}",
+    }

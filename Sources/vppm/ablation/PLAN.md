@@ -6,7 +6,7 @@
 >
 > **기준 모델 (E0 Baseline)**: 21-feat, 5-Fold CV — [results/vppm_origin/metrics_raw.json](../../pipeline_outputs/results/vppm_origin/metrics_raw.json)
 >
-> **종합 결과 보고서**: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md) — 배경부터 해석·후속까지 14 섹션.
+> **종합 결과 보고서 (v2)**: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md) — 배경 / 27 실험 결과 / 그룹별 해석 / 후속 로드맵.
 
 ---
 
@@ -15,62 +15,62 @@
 실험 계획은 **실험 단위 (혹은 실험 군 단위) 로 개별 md 파일** 로 관리한다. 본 파일은 공통 설정과
 인덱스 역할만 담당한다.
 
+> **모든 27 실험 v2 완료 (2026-04-28)** — G4 스캔 피처 실 구현 적용 후 재실행. 종합 결과는
+> [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md), 자동 표는 [summary.md](../../pipeline_outputs/ablation/summary.md).
+
 ### 1.1 주요 그룹 ablation (E1–E4)
 
-| ID | 계획 문서 | 제거 | n_feats | 핵심 결과 요약 |
+| ID | 계획 문서 | 제거 | n_feats | v2 핵심 결과 (ΔUTS / ΔYS) |
 |:--:|:----------|:-----|:-------:|:--------------|
-| E1 | [PLAN_E1_no_dscnn.md](./PLAN_E1_no_dscnn.md)  | G1 DSCNN 8ch      | 13 | ΔUTS **+7.46**, UE 가 naive 수준 붕괴 |
-| E2 | [PLAN_E2_no_sensor.md](./PLAN_E2_no_sensor.md) | G2 Sensor 7ch    | 14 | ΔYS **+2.51** 최대, B1.4 에서 특히 의존 |
-| E3 | [PLAN_E3_no_cad.md](./PLAN_E3_no_cad.md)      | G3 CAD 3ch        | 18 | ΔRMSE 모두 < 0.7 (CAD 는 DSCNN 에 흡수됨) |
-| E4 | [PLAN_E4_no_scan.md](./PLAN_E4_no_scan.md)    | G4 Scan 3ch*      | 18 | ΔUTS **−1.04** (placeholder 때문, 재구현 필요) |
+| E1 | [PLAN_E1_no_dscnn.md](./PLAN_E1_no_dscnn.md)  | G1 DSCNN 8ch      | 13 | +6.14 / +1.69 — **3위** 그룹 |
+| E2 | [PLAN_E2_no_sensor.md](./PLAN_E2_no_sensor.md) | G2 Sensor 7ch    | 14 | +3.97 / +1.01 — **4위** (가장 약함) |
+| E3 | [PLAN_E3_no_cad.md](./PLAN_E3_no_cad.md)      | G3 CAD 3ch        | 18 | +6.63 / +1.85 — **2위 동급**, 의외로 강함 |
+| E4 | [PLAN_E4_no_scan.md](./PLAN_E4_no_scan.md)    | G4 Scan 3ch       | 18 | **+18.48 / +4.60 — 1위** (E31 과 동일) |
 
-\* E4 의 scan 그룹은 3 채널 중 2 개가 placeholder=0 상태로 학습됨.
 
 ### 1.2 조합 ablation (E13)
 
-| ID | 계획 문서 | 제거 | n_feats | 핵심 결과 |
+| ID | 계획 문서 | 제거 | n_feats | v2 핵심 결과 |
 |:--:|:----------|:-----|:-------:|:---------|
-| E13 | [PLAN_E13_combined.md](./PLAN_E13_combined.md) | G1 ∪ G2 (15ch) | 6 | **독립 (additive)** — ΔE13 ≈ ΔE1 + ΔE2, 모두 naive 이하 |
+| E13 | [PLAN_E13_combined.md](./PLAN_E13_combined.md) | G1 ∪ G2 (15ch) | 6 | **거의 additive** — ΔUTS +10.06 ≈ ΔE1+ΔE2 (+10.11) |
 
 ### 1.3 DSCNN 서브 ablation (E5–E12 + E23/E24)
 
 단일 파일로 10 개 실험 계획:
 
-- [PLAN_dscnn_subablation.md](./PLAN_dscnn_subablation.md) — **부분 실행 (E5~E8 완료, E9~E12·E23·E24 대기)**
+- [PLAN_dscnn_subablation.md](./PLAN_dscnn_subablation.md) — ✅ 모든 실험 완료
 
-| 범위 | 성격 | 상태 | 핵심 발견 / 질문 |
-|:----|:-----|:----:|:--------------|
-| E5–E8   | Normal 2 + Defect 2 단독 제거 | ✅ 완료 | **가설 반전**: Normal 2 채널 Critical (ΔUE +1.40~1.47), Defect 2 채널 Marginal |
-| E9–E12  | Defect 4 채널 단독 제거 | ⏳ 대기 | E12 (excessive_melting) 가 B1.2 Keyhole 의 핵심인가? |
-| E23     | 결함 6 채널 묶음 (normal 2개만 남김) | ⏳ 대기 | **결정적 실험**: 결함 정보는 Defect 채널에 집중되어 있는가? |
-| E24     | Normal 2 채널 묶음 (defect 6개만 남김) | ⏳ 대기 | **결정적 실험**: Normal 채널이 결함 통합 신호로 기능하는가? |
+| 범위 | 성격 | 상태 | v2 결과 |
+|:----|:-----|:----:|:--------|
+| E5–E12  | DSCNN 8 채널 **단독** 제거 | ✅ 완료 | 모두 \|ΔUTS\| < 1.82 — 단일 채널은 noise. E12(excessive_melting) 는 음수 (-0.08). |
+| E23     | 결함 6 채널 묶음 | ✅ 완료 | ΔUTS **+2.57** — 묶어야 의미 있음 |
+| E24     | Normal 2 채널 묶음 | ✅ 완료 | ΔUTS **+1.75** — E23 과 거의 비슷 |
 
-> 잠정 결론: DSCNN 의 핵심 기여는 "어떤 결함이냐"보다 "결함이 얼마나 있느냐" — Normal 채널이 통합 결함률 신호로 작용 중.
+> **결론**: DSCNN 정보는 "어떤 결함" 으로 분리되지 않고 8 채널에 분산 — collective effect.
+> defect 묶음(E23) 과 normal 묶음(E24) 영향이 거의 같다는 사실이 이를 뒷받침.
 
-### 1.4 센서 서브 ablation (E14–E22)
+### 1.4 센서 서브 ablation (E14–E22) — ✅ 완료
 
-단일 파일로 9 개 실험 계획:
-
-- [PLAN_sensor_subablation.md](./PLAN_sensor_subablation.md)
-
-| 범위 | 성격 | 핵심 결과 |
+| 범위 | 성격 | v2 결과 |
 |:----|:-----|:---------|
-| E14–E20 | 7 개 채널 **단독** 제거 | 모든 채널이 **Marginal** — 단일 기여 없음 |
-| E21     | 가스 유량 3 채널 묶음     | ΔUTS −0.94 (noise-level) |
-| E22     | 온도 2 채널 묶음         | ΔUTS ±0 (무의미) |
+| E14–E20 | 7 개 채널 **단독** 제거 | 모두 \|ΔUTS\| < 0.55 — fully redundant |
+| E21     | 가스 유량 3 채널 묶음 | ΔUTS +0.17 (noise) |
+| E22     | 온도 2 채널 묶음     | ΔUTS +0.47 (noise) |
 
-> 결론: 센서는 **집단 효과** — 단독 채널은 marginal 하지만 E2 (전체 7 개 제거) 에서 ΔUTS +5.75.
+> **결론**: 센서 7 채널은 강한 redundancy — 단독·소그룹 모두 noise, 그룹 전체(E2)에서만 +3.97 발현.
 
-### 1.5 스캔 서브 ablation (E30–E33, 정식 재실험 계획)
+### 1.5 스캔 서브 ablation (E31–E33) — ✅ 완료
 
-- [PLAN_G4_scan_reengineering.md](./PLAN_G4_scan_reengineering.md) — **실행 전** (PLAN §4 전제조건 선행 필요)
+| ID | 제거 | v2 결과 (ΔUTS) |
+|:--:|:----|:---:|
+| E31 | scan 전체 3ch                | **+17.00** (E4 와 동일 ablation 의 v2 재학습) |
+| E32 | scan_return_delay (#19 단독) | **+10.12** ← 단일 피처 중 최강 |
+| E33 | scan_stripe_boundaries (#20 단독) | +2.52 |
 
-| ID | 제거 | 상태 |
-|:--:|:----|:----:|
-| E30 | — (Baseline v2, 21 피처 재학습) | 계획 완료 |
-| E31 | scan 전체 3ch (v2)               | placeholder 상태 수치만 존재 |
-| E32 | scan_return_delay (#20)         | 〃 |
-| E33 | scan_stripe_boundaries (#21)    | 〃 |
+> **핵심 발견**: `laser_return_delay` 단독이 G4 효과 (+17) 의 약 60% 를 설명.
+> 야금학적으로 국소 melt-time 분포 폭 = 냉각 속도 비등방성 → 응고 미세조직 직결.
+
+도커 실행: [docker/ablation/scan_sub/](../../../docker/ablation/scan_sub/)
 
 ### 1.6 실행 도커 인프라
 
@@ -98,9 +98,7 @@
 | **G1. DSCNN**              | 8 | 3–10  | 8 개 결함 세그멘테이션 클래스 | 13 |
 | **G2. Temporal Sensor**    | 7 | 11–17 | 프린트 시간 / 유량 / 산소 / 온도 | 14 |
 | **G3. CAD / 좌표**         | 3 | 0–2   | distance_edge / distance_overhang / build_height | 18 |
-| **G4. 스캔 (Laser)**       | 3 | 18–20 | laser_module / return_delay* / stripe_boundaries* | 18 |
-
-\* G4 의 return_delay 와 stripe_boundaries 는 현재 placeholder(0). 상세: [PLAN_G4_scan_reengineering.md](./PLAN_G4_scan_reengineering.md)
+| **G4. 스캔 (Laser)**       | 3 | 18–20 | laser_module / return_delay / stripe_boundaries | 18 |
 
 ### 2.1 피처별 상세 정보
 
@@ -170,7 +168,7 @@ Sources/pipeline_outputs/ablation/
 | Δ > 0, 큼 | 해당 그룹이 **핵심** 기여 (E1, E2 사례) |
 | 0 < Δ < 0.5 MPa | **Marginal** — 기여 있으나 작음 (E3 사례) |
 | Δ ≈ 0 | 기여 없음 또는 noise (E14–E22 단독 사례) |
-| Δ < 0 | **역효과** — 해당 그룹이 학습을 방해했음 (E4 placeholder 사례) |
+| Δ < 0 | **역효과** — 해당 그룹이 학습을 방해했음 (노이즈 피처 가능성) |
 
 ### 5.2 통계적 유의성
 
@@ -209,23 +207,21 @@ Baseline RMSE 가 내재오차의 수 배 — UE 는 7.4× 로 가장 큰 격차
   실제 배포 시엔 Leave-One-Build-Out (LOBO) CV 로 재검증 필요.
 - **하이퍼파라미터 고정**: 피처 수가 줄면 최적 hidden 이 달라질 수 있으나, 비교 공정성을 위해
   baseline 과 동일 구조(128)를 유지. 후속 실험에서 hidden tuning 분리 수행 가능.
-- **G4 의 placeholder 한계**: 피처 19, 20 이 상수 0 이므로 E4 는 사실상 `laser_module` 단독 효과만 측정.
-  정식 해석은 [PLAN_G4_scan_reengineering.md](./PLAN_G4_scan_reengineering.md) 실행 후 가능.
 - **5 빌드 밖 일반화 불가**: 결과는 본 데이터셋(SS 316L, Concept Laser M2, 특정 공정 윈도우) 에 한정.
 
 ---
 
 ## 7. 후속 실험 로드맵
 
-| 우선순위 | 실험 | 계획 문서 | 상태 |
-|:-------:|:----|:---------|:----:|
-| 1 | DSCNN 서브 잔여 6 실험 (E9–E12, E23, E24) | [PLAN_dscnn_subablation.md](./PLAN_dscnn_subablation.md) | E5–E8 완료, 잔여 대기 — **즉시 실행 가능** |
-| 2 | PLAN_G4 정식 실험 (E30–E33) | [PLAN_G4_scan_reengineering.md](./PLAN_G4_scan_reengineering.md) | 계획 완료, 구현 대기 |
-| 3 | LOBO CV                         | 미계획 | — |
-| 4 | E14–E22 + E5–E8 seed 반복      | 미계획 | — |
-| 5 | Hidden size sweep              | 미계획 | — |
+| 우선순위 | 실험 | 동기 | 상태 |
+|:-------:|:----|:----|:----:|
+| 1 | E31/E32/E33 빌드별 잔차 분해 | G4 의 빌드별 의존도 (B1.4 가설 검증) | 미계획 |
+| 2 | LOBO CV                     | sample-CV 의 빌드 누출 보정         | 미계획 |
+| 3 | melt-time 통계 추가          | return_delay 효과 확장 (variance, percentile) | 미계획 |
+| 4 | Hidden size sweep           | E13 (n=6) 에서 hidden=128 적정성   | 미계획 |
+| 5 | Seed 반복                   | DSCNN/Sensor 단일-channel noise 통계 확정 | 미계획 |
 
-상세는 [FULL_REPORT.md §13](../../pipeline_outputs/ablation/FULL_REPORT.md) 참조.
+상세는 [FULL_REPORT.md §7](../../pipeline_outputs/ablation/FULL_REPORT.md) 참조.
 
 ---
 
@@ -239,9 +235,8 @@ Sources/vppm/ablation/
 ├── PLAN_E3_no_cad.md                    # E3 계획 + 결과
 ├── PLAN_E4_no_scan.md                   # E4 계획 + 결과
 ├── PLAN_E13_combined.md                 # E13 조합 계획
-├── PLAN_dscnn_subablation.md            # E5–E12 + E23/E24 DSCNN 서브 계획 (실행 전)
-├── PLAN_sensor_subablation.md           # E14–E22 센서 서브 계획 + 결과 요약
-├── PLAN_G4_scan_reengineering.md        # E30–E33 스캔 재구현 계획 (실행 전)
+├── PLAN_dscnn_subablation.md            # E5–E12 + E23/E24 DSCNN 서브 계획
+├── PLAN_sensor_subablation.md           # E14–E22 센서 서브 계획
 ├── run.py                               # 실행 러너 (--experiment / --all / --rebuild-summary)
 ├── analyze_per_build.py                 # 빌드별 잔차 분해 스크립트
 └── __init__.py

@@ -1,37 +1,51 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[entrypoint] VPPM-LSTM container starting..."
+echo "[entrypoint] Sample-LSTM v2 container starting..."
 
-# 필수 마운트 포인트 검증
-for p in \
-    /workspace/Sources/pipeline_outputs/features \
-    /workspace/Sources/pipeline_outputs/lstm_embeddings \
-    /workspace/Sources/pipeline_outputs/models_lstm \
-    /workspace/Sources/pipeline_outputs/results/vppm_lstm ; do
-  if [ ! -d "$p" ]; then
-    echo "[entrypoint] FATAL: $p 가 마운트되지 않음" >&2
-    exit 1
-  fi
-done
-
-# 필수 재사용 파일
-if [ ! -f /workspace/Sources/pipeline_outputs/features/all_features.npz ]; then
-  echo "[entrypoint] FATAL: all_features.npz 없음 — baseline features 추출을 먼저 해야 합니다" >&2
-  exit 1
-fi
-
-# /tmp/image_stacks 생성 (tmpfs)
-mkdir -p "${LSTM_CACHE_DIR:-/tmp/image_stacks}"
-
-# venv 마운트 확인
 VENV_PY=/workspace/venv/bin/python
 if [ ! -x "$VENV_PY" ]; then
-  echo "[entrypoint] FATAL: $VENV_PY 없음 — venv 가 마운트되지 않음" >&2
+  echo "[entrypoint] FATAL: $VENV_PY 없음 — 호스트 venv 가 마운트되지 않았습니다" >&2
   exit 1
 fi
 
-# GPU / torch 상태 로그
+# Phase 별 검증
+PHASE="${LSTM_PHASE:-unknown}"
+case "$PHASE" in
+  cache)
+    if [ ! -d /workspace/ORNL_Data_Origin ]; then
+      echo "[entrypoint] FATAL: ORNL_Data_Origin/ 가 ro 마운트되지 않음" >&2
+      exit 1
+    fi
+    if [ ! -d /workspace/Sources/pipeline_outputs/sample_stacks ]; then
+      echo "[entrypoint] FATAL: sample_stacks/ rw 마운트 필요" >&2
+      exit 1
+    fi
+    ;;
+  train|extract)
+    if [ ! -f /workspace/Sources/pipeline_outputs/sample_stacks/normalization.json ]; then
+      echo "[entrypoint] FATAL: 캐시 (Phase L1) 가 먼저 완료되어야 합니다" >&2
+      exit 1
+    fi
+    if [ -z "${LSTM_MODE:-}" ]; then
+      echo "[entrypoint] FATAL: LSTM_MODE (fwd|bidir) 환경변수 필요" >&2
+      exit 1
+    fi
+    ;;
+  vppm)
+    if [ -z "${LSTM_MODE:-}" ]; then
+      echo "[entrypoint] FATAL: LSTM_MODE (fwd|bidir) 환경변수 필요" >&2
+      exit 1
+    fi
+    NPZ="/workspace/Sources/pipeline_outputs/features/all_features_with_lstm_${LSTM_MODE}.npz"
+    if [ ! -f "$NPZ" ]; then
+      echo "[entrypoint] FATAL: $NPZ 없음 — extract (Phase L3 --mode $LSTM_MODE) 먼저 실행" >&2
+      exit 1
+    fi
+    ;;
+esac
+
+# torch / cuda 상태
 $VENV_PY - <<'PY'
 import torch, sys
 print(f"[entrypoint] python={sys.version.split()[0]}  torch={torch.__version__}  "
@@ -39,5 +53,5 @@ print(f"[entrypoint] python={sys.version.split()[0]}  torch={torch.__version__} 
       f"devices={torch.cuda.device_count()}")
 PY
 
-echo "[entrypoint] launching: $*"
+echo "[entrypoint] phase=$PHASE  launching: $*"
 exec "$@"
