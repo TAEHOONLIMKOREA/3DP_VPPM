@@ -1,6 +1,6 @@
 # Docker — VPPM Feature Ablation
 
-[Sources/vppm/ablation/PLAN.md](../../Sources/vppm/ablation/PLAN.md) 의 4개 그룹 제거 실험을 각각 **독립 도커 컨테이너** 로 실행하고, 산출물을 호스트 볼륨으로 회수한다.
+[Sources/vppm/ablation/PLAN.md](../../Sources/vppm/ablation/PLAN.md) 의 27 ablation 실험을 **단일 docker-compose 파일** 로 통합 실행한다. wrapper 스크립트 없이 `docker compose` 명령만으로 모든 시나리오 커버.
 
 ## 전제 조건
 
@@ -12,123 +12,81 @@
 
 ```
 docker/ablation/
-├── Dockerfile          # 공용 이미지 — vppm-ablation:gpu
-├── entrypoint.sh       # 마운트 검증 + torch/cuda 점검
-├── run_all.sh          # 4 그룹 순차 실행
-├── dscnn/              # E1 — DSCNN 8 피처 제거
-│   ├── docker-compose.yml
-│   └── run.sh
-├── sensor/             # E2 — Temporal 센서 7 피처 제거
-│   ├── docker-compose.yml
-│   └── run.sh
-├── cad/                # E3 — CAD/좌표 3 피처 제거
-│   ├── docker-compose.yml
-│   └── run.sh
-├── scan/               # E4 — 스캔 3 피처 제거 (laser_module + return_delay + stripe_boundaries)
-│   ├── docker-compose.yml
-│   └── run.sh
-├── combined/           # E13 — DSCNN+Sensor 동시 제거 (15 피처 제거, 6 피처 학습)
-│   ├── docker-compose.yml
-│   └── run.sh
-├── dscnn_sub/          # E5~E12 + E23/E24 — DSCNN 8채널 + 2 묶음
-│   ├── README.md       # 상세 — PLAN_dscnn_subablation.md 와 같이 볼 것
-│   ├── docker-compose.yml   # EXPERIMENT_ID / NVIDIA_VISIBLE_DEVICES 파라미터
-│   ├── run.sh               # 단일 실험
-│   └── run_all.sh           # 4-GPU 3배치 병렬
-├── sensor_sub/         # E14~E22 — 센서 서브 채널 9종
-│   ├── README.md       # 상세 — PLAN_sensor_subablation.md 와 같이 볼 것
-│   ├── docker-compose.yml   # EXPERIMENT_ID / NVIDIA_VISIBLE_DEVICES 파라미터
-│   ├── run.sh               # 단일 실험
-│   └── run_all.sh           # 4-GPU 3배치 병렬
-└── scan_sub/           # E31~E33 — 스캔(G4) 재구현 후 ablation
-    ├── README.md       # 상세 — scan 서브 채널 ablation
-    ├── docker-compose.yml   # EXPERIMENT_ID / NVIDIA_VISIBLE_DEVICES 파라미터
-    ├── run.sh               # 단일 실험
-    └── run_all.sh           # 3-GPU 단일 배치 병렬
+├── Dockerfile          공용 이미지 — vppm-ablation:gpu (검증/실행 로직은 compose `command:` 에 인라인)
+├── docker-compose.yml  27 실험 + summary service. profiles 로 그룹/실험 단위 실행
+├── .env                기본값 (UID_GID, ABLATION_EXTRA)
+└── README.md           ← 본 문서
 ```
 
-> **주의 (scan_sub)**: E31~E33 실행 전에 `scan_features.py` 구현 → 피처 재추출 → baseline
-> 재학습이 **호스트에서** 선행되어야 한다. 상세는 [scan_sub/README.md](./scan_sub/README.md) 참조.
+## 실험 매핑 (27개)
 
-## 볼륨 매핑 (모든 그룹 동일)
+| Profile | 실험 | 비고 |
+|---|---|---|
+| `main` | E1, E2, E3, E4 | DSCNN/Sensor/CAD/Scan 그룹 통째 제거 — 4 GPU 병렬 |
+| `dscnn_sub` | E5~E12, E23, E24 | DSCNN 채널 단위 제거 — 4-GPU rotation 3 batch |
+| `combined` | E13 | DSCNN + Sensor 동시 제거 |
+| `sensor_sub` | E14~E22 | Sensor 채널 단위 제거 — 4-GPU rotation 3 batch (4-4-1) |
+| `scan_sub` | E31~E33 | Scan 채널 단위 제거 — 3 GPU 병렬 |
+| `summary` | — | 디스크 결과 스캔 → ablation/summary.md 통합 재생성 |
+| `E<N>` | 단일 실험 | 예: `--profile E7` |
 
-| 호스트 | 컨테이너 | 모드 | 용도 |
-|---|---|:---:|---|
-| `venv/` | `/workspace/venv` | ro | torch + cuda 런타임 |
-| `Sources/pipeline_outputs/features/` | 동일 | ro | `all_features.npz` 입력 |
-| `Sources/pipeline_outputs/results/` | 동일 | ro | baseline `metrics_raw.json` 참조 |
-| `Sources/pipeline_outputs/ablation/` | 동일 | rw | **산출물 — 호스트로 그대로 회수** |
+GPU pin 은 compose 안에 하드코드 (4-GPU 병렬 배치 가정). 다른 토폴로지면 compose 파일 수정.
 
-## 실행 방법
+## 사용법
 
-### 단일 그룹
-
-```bash
-cd docker/ablation/dscnn
-./run.sh              # 전체 학습
-./run.sh --quick      # smoke test (20 epoch, 2분 이내)
-```
-
-### 4개 그룹 순차
+### 그룹 단위 (권장 — 한 그룹 끝나면 다음 그룹 실행)
 
 ```bash
 cd docker/ablation
-./run_all.sh
-./run_all.sh --quick
+docker compose --profile main up        # E1~E4   (~30 분)
+docker compose --profile dscnn_sub up   # 10 실험 (~45 분, 내부 batching 자동)
+docker compose --profile combined up    # E13     (~30 분)
+docker compose --profile sensor_sub up  # 9 실험  (~45 분)
+docker compose --profile scan_sub up    # 3 실험  (~30 분)
+docker compose --profile summary up     # ablation/summary.md 재생성
 ```
 
-### 수동 compose (원하면)
+`up` 은 (`-d` 없이) 해당 profile 의 모든 service 가 끝날 때까지 block. 백그라운드로 돌리려면 `up -d` + 별도 터미널에서 `docker compose logs -f`.
+
+### 단일 실험만
 
 ```bash
-cd docker/ablation/sensor
-docker compose build
-docker compose run --rm ablation-sensor
+docker compose --profile E7 up                          # E7 (No-Streaking) 만
+docker compose --profile E7 up -d --build               # 백그라운드
+docker compose logs -f E7                               # 로그 따라가기
 ```
 
-## 산출물
+### Smoke test (epochs=20, ~5분)
 
-각 그룹 컨테이너는 자기 그룹의 실험 폴더만 씁니다:
-
+```bash
+ABLATION_EXTRA=--quick docker compose --profile E1 up
 ```
-Sources/pipeline_outputs/ablation/
-├── E1_no_dscnn/        # dscnn 컨테이너가 생성
-│   ├── experiment_meta.json
-│   ├── models/…
-│   ├── results/…
-│   └── features/normalization.json
-├── E2_no_sensor/       # sensor 컨테이너
-├── E3_no_cad/          # cad 컨테이너
-├── E4_no_scan/         # scan 컨테이너
-└── summary.md          # 주의: 컨테이너마다 덮어씀 (하단 참고)
+또는 `.env` 의 `ABLATION_EXTRA=--quick` 수정.
+
+### 정리
+
+```bash
+docker compose down                                     # 종료된 컨테이너 정리
 ```
 
-## GPU 할당 (병렬 실행)
+## 내부 메커니즘
 
-`run_all.sh` 는 4 컨테이너를 각자 다른 GPU 에 핀시켜 동시에 실행한다.
+### depends_on 으로 GPU rotation batching
 
-| 그룹 | 실험 | GPU |
-|:----:|:----:|:---:|
-| dscnn | E1 | 0 |
-| sensor | E2 | 1 |
-| cad | E3 | 2 |
-| scan | E4 | 3 |
+`dscnn_sub` profile 에서 E5~E12 + E23, E24 를 4-GPU 에 배치 스케줄링:
 
-GPU 핀은 각 `<group>/docker-compose.yml` 의 `NVIDIA_VISIBLE_DEVICES=<N>` 로 설정.
-GPU 4장이 없는 환경이면 compose 파일의 값을 편집해 같은 GPU 에 겹치게 하거나,
-`run_all.sh` 대신 그룹별 `run.sh` 를 순차 실행하면 된다.
+- **batch 1**: E5(GPU0), E6(GPU1), E7(GPU2), E8(GPU3) 동시 시작
+- **batch 2**: E9~E12 — 각각 batch1 의 같은 GPU 컨테이너 완료 후 시작 (`depends_on E5/E6/E7/E8`)
+- **batch 3**: E23(GPU0), E24(GPU1) — batch2 의 E9, E10 완료 후
 
-## summary.md 흐름
+`sensor_sub` 도 동일 패턴 (4-4-1).
 
-- **단일 그룹 실행**(`dscnn/run.sh` 등): 해당 실험 한 줄만 포함한 summary 가 즉시 작성됨.
-- **`run_all.sh` 병렬 실행**: race 방지를 위해 각 컨테이너는 `--skip-summary` 로 요약을 건너뛰고, 모든 컨테이너 완료 후 호스트 venv 로 `--rebuild-summary` 를 호출해 4 실험을 통합한 summary.md 를 한 번에 생성.
-- 언제든 결과를 다시 합치고 싶으면:
-  ```bash
-  ./venv/bin/python -m Sources.vppm.ablation.run --rebuild-summary
-  ```
+`required: false` 옵션 덕분에 단일 실험 profile (`--profile E9`) 도 의존성 없이 단독 실행 가능.
 
-## 트러블슈팅
+### YAML anchor 로 boilerplate 공유
 
-- **`venv not mounted`**: 호스트 `venv/bin/python` 이 실행 가능해야 함.
-- **`all_features.npz 없음`**: `./venv/bin/python -m Sources.vppm.run_pipeline --phase features` 를 먼저 수행.
-- **권한 에러 (UID mismatch)**: 도커 기본 root 로 실행된다. 산출물 디렉터리가 비-루트 소유면 `chown -R $(id -u):$(id -g) Sources/pipeline_outputs/ablation` 로 후처리.
-- **GPU 비가시**: `runtime: nvidia` 지원 여부 확인 (`docker run --rm --gpus all nvidia/cuda:12.6.0-base nvidia-smi`).
+`x-base`, `x-env`, `x-cmd` anchor 가 27 service 공통 설정 (volumes, image, validation 명령) 을 한 번만 정의. 각 service 는 GPU/EXPERIMENT_ID 만 다름.
+
+### 검증 인라인
+
+이전 `entrypoint.sh` 의 검증 (venv 마운트, all_features.npz 존재, ablation 디렉터리 쓰기 권한) 이 `command:` 의 shell 명령 prefix 로 인라인됨. `set -e` + `exec python -m ...` 패턴.

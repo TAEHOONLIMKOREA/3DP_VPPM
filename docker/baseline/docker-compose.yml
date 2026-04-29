@@ -1,17 +1,24 @@
 # Baseline VPPM 학습 — 21-feat (실 구현 scan 포함) 5-Fold CV
 # train + evaluate 를 순차 실행. 산출물: pipeline_outputs/{models,results/vppm_origin}/
 #
-# 사용법:
-#   ./run.sh             # GPU 0 기본
-#   ./run.sh --gpu 2     # GPU 2
+# 사용법 — `.env` 파일이 GPU/UID 기본값을 들고 있어 한 줄로 끝남:
+#
+#   docker compose -f docker/baseline/docker-compose.yml up -d --build
+#   docker compose -f docker/baseline/docker-compose.yml logs -f
+#   docker compose -f docker/baseline/docker-compose.yml down
+#
+# 다른 GPU: `.env` 의 NVIDIA_VISIBLE_DEVICES 수정 또는 인라인 환경변수.
+#
+# 전제: features/all_features.npz 존재 (run_pipeline --phase features 산출물).
 services:
   baseline:
     build:
       context: ../..
-      dockerfile: docker/ablation/Dockerfile      # 기존 이미지 재사용
+      dockerfile: docker/ablation/Dockerfile      # 공용 이미지 재사용
     image: vppm-ablation:gpu
     runtime: nvidia
     user: "${UID_GID:-1000:1000}"
+    restart: "no"
     environment:
       - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}
       - PYTHONPATH=/workspace
@@ -24,7 +31,6 @@ services:
       - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:rw
       - ../../Sources/pipeline_outputs/models:/workspace/Sources/pipeline_outputs/models:rw
       - ../../Sources/pipeline_outputs/results:/workspace/Sources/pipeline_outputs/results:rw
-      - ../../Sources/pipeline_outputs/ablation:/workspace/Sources/pipeline_outputs/ablation:rw
     shm_size: "2gb"
     working_dir: /workspace
     command:
@@ -32,7 +38,17 @@ services:
       - -c
       - |
         set -e
-        echo "[baseline] train then evaluate"
-        /workspace/venv/bin/python -m Sources.vppm.run_pipeline --phase train
-        /workspace/venv/bin/python -m Sources.vppm.run_pipeline --phase evaluate
+        VENV_PY=/workspace/venv/bin/python
+        if [ ! -x "$$VENV_PY" ]; then
+          echo "[baseline] FATAL: $$VENV_PY 없음 — 호스트 venv 가 마운트되지 않았습니다" >&2
+          exit 1
+        fi
+        if [ ! -f /workspace/Sources/pipeline_outputs/features/all_features.npz ]; then
+          echo "[baseline] FATAL: all_features.npz 없음 — features 추출 먼저 완료해야 합니다" >&2
+          exit 1
+        fi
+        $$VENV_PY -c "import torch,sys;print(f'[baseline] python={sys.version.split()[0]} torch={torch.__version__} cuda={torch.cuda.is_available()} devs={torch.cuda.device_count()}')"
+        echo "[baseline] train → evaluate"
+        $$VENV_PY -m Sources.vppm.run_pipeline --phase train
+        $$VENV_PY -m Sources.vppm.run_pipeline --phase evaluate
         echo "[baseline] Done. Results → Sources/pipeline_outputs/results/vppm_origin/"

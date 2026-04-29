@@ -16,13 +16,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 \
 
 WORKDIR /workspace
 
-# 코드만 복사 (데이터/산출물/venv 는 bind mount)
+# 코드만 복사 (데이터/산출물/venv 는 bind mount). 검증/실행 로직은 compose `command:` 에 인라인.
 COPY Sources/ ./Sources/
 COPY CLAUDE.md ./
 
-COPY docker/ablation/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 # 기본 명령: usage 출력 (각 group compose 가 --experiment E* 로 override)
 CMD ["/workspace/venv/bin/python", "-m", "Sources.vppm.ablation.run", "--help"]
