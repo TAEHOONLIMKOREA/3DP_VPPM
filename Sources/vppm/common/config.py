@@ -214,3 +214,27 @@ LSTM_CACHE_DIR = LSTM_EXPERIMENT_DIR / "cache"
 LSTM_MODELS_DIR = LSTM_EXPERIMENT_DIR / "models"
 LSTM_RESULTS_DIR = LSTM_EXPERIMENT_DIR / "results"
 LSTM_FEATURES_DIR = LSTM_EXPERIMENT_DIR / "features"  # normalization.json 저장용
+
+# ============================================================
+# VPPM-LSTM-Dual 확장 (Sources/vppm/lstm_dual/PLAN.md)
+# ============================================================
+# visible/0 + visible/1 두 채널 각각 CNN+LSTM 임베딩 (1-dim) → 21 + 1 + 1 = 23 features
+# visible/0 캐시는 기존 LSTM_CACHE_DIR (vppm_lstm/cache/) 재사용,
+# visible/1 캐시만 lstm_dual 전용 디렉터리에 새로 빌드.
+
+LSTM_DUAL_CAMERA_CHANNEL_V1 = 1   # 추가 채널 (분말 도포 후)
+
+# 채널별 임베딩 차원 (둘 다 1 → 23 = 21 + 1 + 1)
+LSTM_DUAL_D_EMBED_V0 = 1
+LSTM_DUAL_D_EMBED_V1 = 1
+
+# CNN/LSTM 가중치 공유 여부 — 기본 False (채널별 독립 브랜치)
+LSTM_DUAL_SHARE_CNN = False
+LSTM_DUAL_SHARE_LSTM = False
+
+# 산출물 경로 — Sources/pipeline_outputs/experiments/vppm_lstm_dual/
+LSTM_DUAL_EXPERIMENT_DIR = OUTPUT_DIR / "experiments" / "vppm_lstm_dual"
+LSTM_DUAL_CACHE_DIR = LSTM_DUAL_EXPERIMENT_DIR / "cache"     # visible/1 캐시 전용
+LSTM_DUAL_MODELS_DIR = LSTM_DUAL_EXPERIMENT_DIR / "models"
+LSTM_DUAL_RESULTS_DIR = LSTM_DUAL_EXPERIMENT_DIR / "results"
+LSTM_DUAL_FEATURES_DIR = LSTM_DUAL_EXPERIMENT_DIR / "features"

@@ -22,9 +22,20 @@ from ..common import config
 from ..common.supervoxel import SuperVoxelGrid, find_valid_supervoxels
 
 
-def _build_one_build(build_id: str, out_dir: Path) -> Path:
+def _build_one_build(build_id: str, out_dir: Path,
+                     channel: int = config.LSTM_CAMERA_CHANNEL,
+                     file_prefix: str = "crop_stacks") -> Path:
+    """단일 빌드의 카메라 채널 크롭 시퀀스 캐시 빌드.
+
+    Args:
+        build_id: 빌드 식별자 (B1.1 ~ B1.5)
+        out_dir: 출력 디렉터리
+        channel: 카메라 채널 (0=visible/0 용융 직후, 1=visible/1 분말 도포 후)
+        file_prefix: 출력 파일 접두사 (기본 "crop_stacks" → crop_stacks_B1.x.h5).
+                     visible/1 의 경우 "crop_stacks_v1" 등 사용.
+    """
     hdf5 = str(config.hdf5_path(build_id))
-    out_path = out_dir / f"crop_stacks_{build_id}.h5"
+    out_path = out_dir / f"{file_prefix}_{build_id}.h5"
 
     grid = SuperVoxelGrid.from_hdf5(hdf5)
     valid = find_valid_supervoxels(grid, hdf5)
@@ -36,7 +47,7 @@ def _build_one_build(build_id: str, out_dir: Path) -> Path:
     T_max = config.LSTM_T_MAX
     H = config.LSTM_CROP_H
     W = config.LSTM_CROP_W
-    cam_key = f"slices/camera_data/visible/{config.LSTM_CAMERA_CHANNEL}"
+    cam_key = f"slices/camera_data/visible/{channel}"
 
     indices = valid["voxel_indices"]   # (N, 3) — (ix, iy, iz)
 
@@ -102,7 +113,7 @@ def _build_one_build(build_id: str, out_dir: Path) -> Path:
         out.attrs["T_max"] = T_max
         out.attrs["H"] = H
         out.attrs["W"] = W
-        out.attrs["camera_channel"] = config.LSTM_CAMERA_CHANNEL
+        out.attrs["camera_channel"] = channel
         out.attrs["build_id"] = build_id
         out.attrs["n_sv"] = N
         out.attrs["valid_layer_rule"] = "part_ids>0 in SV xy region"
@@ -112,7 +123,9 @@ def _build_one_build(build_id: str, out_dir: Path) -> Path:
 
 
 def build_cache(build_ids: list[str] | None = None,
-                out_dir: Path = config.LSTM_CACHE_DIR) -> list[Path]:
+                out_dir: Path = config.LSTM_CACHE_DIR,
+                channel: int = config.LSTM_CAMERA_CHANNEL,
+                file_prefix: str = "crop_stacks") -> list[Path]:
     """모든 빌드에 대해 크롭 시퀀스 캐시 빌드.
 
     이미 존재하는 파일은 건너뜀 (덮어쓰려면 삭제 후 재실행).
@@ -125,13 +138,13 @@ def build_cache(build_ids: list[str] | None = None,
 
     paths = []
     for bid in build_ids:
-        out_path = out_dir / f"crop_stacks_{bid}.h5"
+        out_path = out_dir / f"{file_prefix}_{bid}.h5"
         if out_path.exists():
             print(f"[cache] {out_path.name} already exists, skip")
             paths.append(out_path)
             continue
-        print(f"\n[cache] Building {bid} → {out_path}")
-        paths.append(_build_one_build(bid, out_dir))
+        print(f"\n[cache] Building {bid} (channel={channel}) → {out_path}")
+        paths.append(_build_one_build(bid, out_dir, channel=channel, file_prefix=file_prefix))
 
     return paths
 
@@ -141,5 +154,8 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--builds", nargs="+", default=list(config.BUILDS.keys()))
     p.add_argument("--out-dir", type=Path, default=config.LSTM_CACHE_DIR)
+    p.add_argument("--channel", type=int, default=config.LSTM_CAMERA_CHANNEL,
+                   help="카메라 채널 (0=visible/0, 1=visible/1)")
+    p.add_argument("--file-prefix", type=str, default="crop_stacks")
     args = p.parse_args()
-    build_cache(args.builds, args.out_dir)
+    build_cache(args.builds, args.out_dir, channel=args.channel, file_prefix=args.file_prefix)
