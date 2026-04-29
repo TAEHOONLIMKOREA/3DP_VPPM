@@ -199,10 +199,12 @@ LSTM_NUM_LAYERS = 1
 
 # 학습 하이퍼파라미터 (가변 길이 시퀀스, GPU 필수)
 LSTM_LR = 1e-3
-LSTM_BATCH_SIZE = 8             # 샘플 단위라 배치 작게
+LSTM_BATCH_SIZE = 64            # 시퀀스 길이 거의 균일 (median≈100), 패딩 손해 무시 가능
 LSTM_MAX_EPOCHS = 200
 LSTM_EARLY_STOP_PATIENCE = 20
-LSTM_NUM_WORKERS = 2
+LSTM_NUM_WORKERS = 12
+LSTM_PREFETCH_FACTOR = 4
+LSTM_IN_MEMORY = True           # 캐시 H5 → numpy 통째 RAM 로딩 (~9GB, 219GB 여유)
 LSTM_GRAD_CLIP = 1.0
 LSTM_WEIGHT_DECAY = 1e-4
 

@@ -10,7 +10,7 @@ ORNL_Data_Open/
 ORNL_Data_Origin/*.hdf5
 .claude/
 CLAUDE.md
-Sources/pipeline_outputs/
+Sources/pipeline_outputs/features/
 
 # Distribution / packaging
 .Python
