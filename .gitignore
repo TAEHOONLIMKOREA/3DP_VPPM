@@ -11,6 +11,8 @@ ORNL_Data_Origin/*.hdf5
 .claude/
 CLAUDE.md
 Sources/pipeline_outputs/features/
+Sources/pipeline_outputs/features/
+Sources/pipeline_outputs/sample_stacks/
 
 # Distribution / packaging
 .Python

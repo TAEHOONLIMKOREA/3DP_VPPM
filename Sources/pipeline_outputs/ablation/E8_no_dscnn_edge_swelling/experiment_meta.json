@@ -1,0 +1,33 @@
+{
+  "exp_id": "E8",
+  "drop_group": "dscnn_edge_swelling",
+  "description": "No-EdgeSwelling \u2014 \uc5e3\uc9c0 \ud33d\ucc3d \uc81c\uac70",
+  "dropped_feature_indices": [
+    6
+  ],
+  "kept_feature_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "n_feats": 20,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}

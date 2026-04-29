@@ -1,0 +1,33 @@
+{
+  "exp_id": "E13",
+  "drop_group": "dscnn_sensor",
+  "description": "No-DSCNN+Sensor \u2014 G1\u222aG2 15\ud53c\ucc98 \uc81c\uac70 (\ub0a8\ub294 \ud53c\ucc98 6\uac1c)",
+  "dropped_feature_indices": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17
+  ],
+  "kept_feature_indices": [
+    0,
+    1,
+    2,
+    18,
+    19,
+    20
+  ],
+  "n_feats": 6,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}
