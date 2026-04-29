@@ -1,4 +1,4 @@
-# Baseline VPPM v2 학습 — 21-feat (실 구현 scan 포함) 5-Fold CV
+# Baseline VPPM 학습 — 21-feat (실 구현 scan 포함) 5-Fold CV
 # train + evaluate 를 순차 실행. 산출물: pipeline_outputs/{models,results/vppm_origin}/
 #
 # 사용법:
@@ -32,7 +32,7 @@ services:
       - -c
       - |
         set -e
-        echo "[baseline] Phase 4 — train then evaluate"
+        echo "[baseline] train then evaluate"
         /workspace/venv/bin/python -m Sources.vppm.run_pipeline --phase train
         /workspace/venv/bin/python -m Sources.vppm.run_pipeline --phase evaluate
         echo "[baseline] Done. Results → Sources/pipeline_outputs/results/vppm_origin/"

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Baseline VPPM v2 학습 (Phase 4) — 도커.
+# Baseline VPPM 학습 — 도커.
 #
 # Usage:
 #   ./run.sh             # GPU 0 기본
 #   ./run.sh --gpu 2     # GPU 지정
 #
-# 전제: features/all_features.npz 존재 (Phase 3 완료).
+# 전제: features/all_features.npz 존재.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -26,7 +26,7 @@ if ! docker info >/dev/null 2>&1; then
   DC=(sudo -E docker compose)
 fi
 
-echo "[run.sh] Baseline v2 train+evaluate on GPU $GPU"
+echo "[run.sh] Baseline train+evaluate on GPU $GPU"
 "${DC[@]}" build
 "${DC[@]}" run --rm baseline
 echo "[run.sh] Done."

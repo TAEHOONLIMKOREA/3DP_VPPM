@@ -6,7 +6,7 @@
 #   ./run.sh E32 --gpu 1          # GPU 1 지정
 #   ./run.sh E32 --gpu 0 --quick  # smoke test
 #
-# 전제: scan_features.py 구현 + all_features.npz v2 재추출 완료 (README 참조).
+# 전제: scan_features.py 구현 + all_features.npz 재추출 완료 (README 참조).
 set -euo pipefail
 cd "$(dirname "$0")"
 

@@ -20,7 +20,7 @@ E1~E4, E13~E22 와 동일한 공용 이미지 `vppm-ablation:gpu` 를 공유
 
 | ID | drop_group | 제거 피처 idx | 의미 |
 |:--:|:----------:|:-------------:|:----|
-| E31 | `scan`                    | [18, 19, 20] | v2 No-Scan — G4 3개 전체 제거 (E4 v2 재실험) |
+| E31 | `scan`                    | [18, 19, 20] | No-Scan — G4 3개 전체 제거 (E4 재실험) |
 | E32 | `scan_return_delay`       | [19]         | #20 `laser_return_delay` 단독 제거 |
 | E33 | `scan_stripe_boundaries`  | [20]         | #21 `laser_stripe_boundaries` 단독 제거 |
 
@@ -49,7 +49,7 @@ GPU 배정:
 
 | 실험 | GPU |
 |:----:|:---:|
-| E31 (v2 No-Scan) | 0 |
+| E31 (No-Scan) | 0 |
 | E32 (No-ReturnDelay) | 1 |
 | E33 (No-StripeBoundary) | 2 |
 
@@ -67,8 +67,8 @@ EXPERIMENT_ID=E32 NVIDIA_VISIBLE_DEVICES=1 docker compose run --rm ablation-scan
 | 호스트 | 컨테이너 | 모드 | 용도 |
 |---|---|:---:|---|
 | `venv/` | `/workspace/venv` | ro | torch + cuda |
-| `Sources/pipeline_outputs/features/` | 동일 | ro | **v2 `all_features.npz`** |
-| `Sources/pipeline_outputs/results/` | 동일 | ro | **baseline v2 참조** |
+| `Sources/pipeline_outputs/features/` | 동일 | ro | **`all_features.npz`** |
+| `Sources/pipeline_outputs/results/` | 동일 | ro | **baseline 참조** |
 | `Sources/pipeline_outputs/ablation/` | 동일 | rw | **산출물** |
 
 ---

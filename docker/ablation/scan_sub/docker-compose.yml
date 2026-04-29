@@ -4,8 +4,8 @@
 #
 # 전제 — README.md 참조
 #  1) Sources/vppm/origin/scan_features.py 구현 완료
-#  2) Sources/pipeline_outputs/features/all_features.npz 를 v2 (실구현 #20/#21) 로 재추출 완료
-#  3) Baseline v2 (E30, 21-feat) 학습 완료 → pipeline_outputs/results/vppm_origin/
+#  2) Sources/pipeline_outputs/features/all_features.npz 를 실구현 #20/#21 로 재추출 완료
+#  3) Baseline (21-feat) 학습 완료 → pipeline_outputs/results/vppm_origin/
 #
 # 사용 예:
 #   EXPERIMENT_ID=E32 NVIDIA_VISIBLE_DEVICES=0 docker compose run --rm ablation-scan-sub

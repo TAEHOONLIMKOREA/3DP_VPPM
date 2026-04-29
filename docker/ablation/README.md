@@ -47,7 +47,7 @@ docker/ablation/
     └── run_all.sh           # 3-GPU 단일 배치 병렬
 ```
 
-> **주의 (scan_sub)**: E31~E33 실행 전에 `scan_features.py` 구현 → 피처 재추출 → baseline v2
+> **주의 (scan_sub)**: E31~E33 실행 전에 `scan_features.py` 구현 → 피처 재추출 → baseline
 > 재학습이 **호스트에서** 선행되어야 한다. 상세는 [scan_sub/README.md](./scan_sub/README.md) 참조.
 
 ## 볼륨 매핑 (모든 그룹 동일)

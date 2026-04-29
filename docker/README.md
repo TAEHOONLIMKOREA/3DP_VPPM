@@ -4,14 +4,14 @@
 
 ```
 docker/
-├── baseline/           # Baseline VPPM (21-feat) 학습 — Phase 4
+├── baseline/           # Baseline VPPM (21-feat) 학습
 │   ├── docker-compose.yml
 │   └── run.sh
-├── ablation/           # Feature ablation 실험 모음 — Phase 5
+├── ablation/           # Feature ablation 실험 모음 (총 27개)
 │   ├── README.md       # 상세
-│   ├── Dockerfile      # 공용 이미지 (vppm-ablation:gpu) - baseline/ 도 재사용
+│   ├── Dockerfile      # 공용 이미지 (vppm-ablation:gpu) — baseline/ 도 재사용
 │   ├── entrypoint.sh
-│   ├── run_all.sh      # E1~E4 4-GPU 병렬
+│   ├── run_all.sh      # 27개 ablation 전체 실행 + summary 통합
 │   ├── dscnn/          # E1
 │   ├── sensor/         # E2
 │   ├── cad/            # E3
@@ -20,46 +20,10 @@ docker/
 │   ├── dscnn_sub/      # E5~E12 + E23/E24
 │   ├── sensor_sub/     # E14~E22
 │   └── scan_sub/       # E31~E33
-├── lstm/               # VPPM-LSTM 변형
-└── run_v2_all.sh       # 마스터 오케스트레이터 (Phase 4 + Phase 5)
+└── lstm/               # VPPM-LSTM 변형
 ```
 
-## 마스터 스크립트 (Baseline + 모든 Ablation 자동 실행)
-
-```bash
-# 전체: baseline + 27 ablation
-cd docker
-./run_v2_all.sh
-
-# baseline 건너뛰고 ablation 만
-./run_v2_all.sh --skip-baseline
-
-# smoke test (전체 ~20 분)
-./run_v2_all.sh --quick
-```
-
-마스터 스크립트의 사전 검증:
-1. **현재 진행 중인 `run_pipeline --phase features` 가 있으면 종료까지 대기**
-2. `all_features.npz` 의 피처 #19, #20 std > 0 확인 → 0 상수면 즉시 중단
-3. GPU 4 장 + 도커 데몬 접근성 확인
-
-순차 실행 단계:
-1. Phase 4 — Baseline v2 (`docker/baseline/`)
-2. Phase 5 — 27 ablation:
-   - E1~E4 (`ablation/run_all.sh` 4-GPU 병렬)
-   - E5~E12 + E23/24 (`ablation/dscnn_sub/run_all.sh` 4-GPU × 3 배치)
-   - E13 (`ablation/combined/run.sh` 단독)
-   - E14~E22 (`ablation/sensor_sub/run_all.sh` 4-GPU × 3 배치)
-   - E31~E33 (`ablation/scan_sub/run_all.sh` 3-GPU 병렬)
-3. summary.md 통합 재생성
-
-총 예상 시간: **~3~4 시간 (4-GPU)**.
-
-로그: `/tmp/v2_full_rerun_<timestamp>/` 에 단계별 저장.
-
-## 단독 실행 (개별 단계)
-
-### Phase 4 — Baseline v2 만
+## Baseline 학습
 
 ```bash
 cd docker/baseline
@@ -67,10 +31,35 @@ cd docker/baseline
 ./run.sh --gpu 2     # GPU 지정
 ```
 
-### Phase 5 — Ablation 그룹별
+산출물: `Sources/pipeline_outputs/results/vppm_origin/`
+
+## Ablation 전체 실행 (27개 + summary 통합)
 
 ```bash
-# 주요 그룹 (E1~E4)
+cd docker/ablation
+./run_all.sh           # 전체 (~3 시간, 4-GPU)
+./run_all.sh --quick   # smoke test
+```
+
+`run_all.sh` 의 사전 검증:
+1. 진행 중인 `run_pipeline --phase features` 가 있으면 종료까지 대기
+2. `all_features.npz` 의 피처 #19, #20 std > 0 확인 → 0 상수면 즉시 중단
+3. GPU 수 + 도커 데몬 접근성 확인
+
+순차 실행 그룹:
+1. E1~E4   main groups        (4-GPU 병렬,        ~30 min)
+2. E5~E12 + E23/24  dscnn_sub (4-GPU × 3 배치,    ~45 min)
+3. E13     combined           (1 GPU,             ~30 min)
+4. E14~E22 sensor_sub         (4-GPU × 3 배치,    ~45 min)
+5. E31~E33 scan_sub           (3-GPU 병렬,        ~30 min)
+6. summary.md 통합 재생성
+
+로그: `/tmp/ablation_full_<timestamp>/` 에 단계별 저장.
+
+## Ablation 그룹별 단독 실행
+
+```bash
+# 주요 그룹 (E1~E4) — run_all.sh 내부에서도 자동 실행
 cd docker/ablation && ./run_all.sh
 
 # DSCNN 서브 (E5~E12, E23, E24)

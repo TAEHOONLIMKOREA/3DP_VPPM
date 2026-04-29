@@ -2,14 +2,14 @@
 # 스캔 서브 3개 실험(E31~E33)을 3-GPU 병렬로 단일 배치 실행.
 #
 # GPU 배정:
-#   E31 (v2 No-Scan)         → GPU 0
+#   E31 (No-Scan)            → GPU 0
 #   E32 (No-ReturnDelay)     → GPU 1
 #   E33 (No-StripeBoundary)  → GPU 2
 #
 # 각 컨테이너는 --skip-summary 로 실행되어 summary.md race 를 막고, 전체 완료 후
 # 호스트 venv 로 --rebuild-summary 를 호출해 통합 summary.md 를 생성한다.
 #
-# 전제: scan_features.py 구현 + all_features.npz v2 재추출 완료 (README 참조).
+# 전제: scan_features.py 구현 + all_features.npz 재추출 완료 (README 참조).
 #
 # Usage:
 #   ./run_all.sh           # 전체 학습 (GPU 3장 병렬, ~30분)
