@@ -238,3 +238,22 @@ LSTM_DUAL_CACHE_DIR = LSTM_DUAL_EXPERIMENT_DIR / "cache"     # visible/1 캐시 
 LSTM_DUAL_MODELS_DIR = LSTM_DUAL_EXPERIMENT_DIR / "models"
 LSTM_DUAL_RESULTS_DIR = LSTM_DUAL_EXPERIMENT_DIR / "results"
 LSTM_DUAL_FEATURES_DIR = LSTM_DUAL_EXPERIMENT_DIR / "features"
+
+# ============================================================
+# VPPM-LSTM-Dual-4 확장 (Sources/vppm/lstm_dual_4/PLAN.md)
+# ============================================================
+# d_embed_v0/v1 = 4 → 21 + 4 + 4 = 29 features.
+# proj 통로를 16→1 에서 16→4 로 확장 (LSTM hidden 16-dim 출력은 그대로).
+# 캐시는 dual 와 동일 (재추출 안 함): v0=LSTM_CACHE_DIR, v1=LSTM_DUAL_CACHE_DIR 재사용.
+
+LSTM_DUAL_4_D_EMBED_V0 = 4
+LSTM_DUAL_4_D_EMBED_V1 = 4
+
+# 산출물 경로 — Sources/pipeline_outputs/experiments/vppm_lstm_dual_4/
+LSTM_DUAL_4_EXPERIMENT_DIR = OUTPUT_DIR / "experiments" / "vppm_lstm_dual_4"
+LSTM_DUAL_4_MODELS_DIR = LSTM_DUAL_4_EXPERIMENT_DIR / "models"
+LSTM_DUAL_4_RESULTS_DIR = LSTM_DUAL_4_EXPERIMENT_DIR / "results"
+LSTM_DUAL_4_FEATURES_DIR = LSTM_DUAL_4_EXPERIMENT_DIR / "features"
+# 캐시는 dual 과 공유 — 재추출 안 함
+LSTM_DUAL_4_CACHE_V0_DIR = LSTM_CACHE_DIR
+LSTM_DUAL_4_CACHE_V1_DIR = LSTM_DUAL_CACHE_DIR

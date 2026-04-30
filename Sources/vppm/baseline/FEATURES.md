@@ -1,9 +1,9 @@
 # 슈퍼복셀 입력 21개 피처 명세
 
 > **출처**: Scime et al., *Materials* 2023, 16, 7293 — Section 2.10 & Appendix D.
-> **구현**: `Sources/vppm/origin/features.py` (`FeatureExtractor.extract_features`).
-> **단위**: 1 슈퍼복셀 = 1 mm × 1 mm × 3.5 mm (= 70 layer × 0.05 mm).
-> **공통 처리**: 각 피처는 레이어별 픽셀 맵에서 슈퍼복셀 영역 (≈ 7.52 × 7.52 px) 안의 평균을 z-방향(70 layer)으로 누적 평균.
+> **구현**: [Sources/vppm/baseline/features.py](features.py) (`FeatureExtractor.extract_features`).
+> **단위**: 1 슈퍼복셀 = 1 mm × 1 mm × 3.5 mm = 7.52 × 7.52 px × 70 layer.
+> **공통 처리**: 21개 피처 모두 (xy 패치 × 70 layer) → **단일 스칼라**로 압축. LSTM 계열에서도 본 21 피처는 그대로 스칼라 입력이며, 시간축 시퀀스로 들어가는 건 카메라 8×8 크롭(별도 스트림)뿐.
 
 ---
 
@@ -11,40 +11,122 @@
 
 | Group | 인덱스 (1-based / 0-based) | 출처 | 개수 |
 |:----|:----|:----|:--:|
-| **G3 — CAD 기하** | #1–3 / 0–2 | `slices/part_ids` (이진 형상 마스크) | 3 |
+| **G3 — CAD/좌표 기하** | #1–3 / 0–2 | `slices/part_ids` (이진 형상 마스크) + SV 좌표 | 3 |
 | **G1 — DSCNN 세그멘테이션** | #4–11 / 3–10 | `slices/segmentation_results/{0–11}` | 8 |
 | **G2 — 프린터 센서 (Temporal)** | #12–18 / 11–17 | `temporal/*` (레이어별 1D 시계열) | 7 |
 | **G4 — 레이저 스캔 경로** | #19–21 / 18–20 | `parts/process_parameters/laser_module`, `scans/{layer}` | 3 |
 
 ---
 
-## G3 — CAD 기하 피처 (#1–3)
+## 좌표계 / 픽셀 단위 (먼저 알아둘 것)
 
-레이어별 part 마스크(`part_ids > 0`)에서 도출. 가우시안 블러 σ ≈ 3.76 px (= 0.5 mm).
+| 양 | 값 | 의미 |
+|:--|:--|:--|
+| 빌드 플레이트 | 245 × 245 mm | `REAL_SIZE_MM` |
+| 카메라 이미지 | 1842 × 1842 px | `IMAGE_PIXELS` |
+| `pixel_size_mm` | ≈ 0.1330 mm/px | 픽셀당 실측 길이 |
+| `SV_XY_PIXELS` | ≈ 7.52 px | SV 한 변(이미지 슬라이싱 시 `int(round(7.52))=8` px) |
+| `SV_Z_LAYERS` | 70 layer | SV z-방향 = 70 × 0.05 mm = 3.5 mm |
+| `GAUSSIAN_STD_PIXELS` | ≈ 3.76 px | σ = 0.5 mm/px (CAD/DSCNN 블러용) |
 
-### #1  `distance_from_edge`  *(mm)*
-- **의미**: 픽셀에서 가장 가까운 part 외곽까지의 in-plane 거리.
-- **계산**: `scipy.ndimage.distance_transform_edt(cad_mask) × pixel_size_mm` → 가우시안 블러.
-- **포화**: `DIST_EDGE_SATURATION_MM = 3.0 mm` 로 clip (외곽 ≥ 3mm 안쪽은 모두 동일 취급).
-- **물리적 동기**: 외곽 근처는 열 전달 비대칭 → 미세조직 차이 발생.
+### Y 축 flip — 스캔 데이터 ↔ 이미지 좌표 변환
+- `scans/{layer}` 는 **build-plate Cartesian** (Y 위 방향, 원점 좌하단).
+- `slices/*` 는 **이미지 좌표** (row 0 이 위, 원점 좌상단).
+- 래스터화 시:
+  ```
+  col = round(x_mm / pixel_size_mm)              # X: 동일
+  row = (H - 1) - round(y_mm / pixel_size_mm)    # Y: 반전
+  ```
+  ([scan_features.py:48-51](scan_features.py#L48-L51))
 
-### #2  `distance_from_overhang`  *(layers)*
-- **의미**: 픽셀에서 가장 가까운 오버행 영역까지의 거리(레이어 단위).
-- **계산**: 오버행 = `current_cad ∧ ¬previous_cad` (현재 레이어 part 인데 바로 아래에는 없음). 역마스크의 EDT × 가우시안.
-- **포화**: `DIST_OVERHANG_SATURATION_LAYERS = 71` (= 슈퍼복셀 z-크기 70 + 1).
-- **물리적 동기**: 오버행 부위는 분말층 위로 직접 용융 → 결함 발생률 ↑.
+### 슈퍼복셀 → 픽셀 영역
+`SuperVoxelGrid.get_pixel_range(ix, iy)` → `(r0, r1, c0, c1)`. 마지막 행/열은 이미지 끝까지 clip(잔여 ≤ 7 px).
 
-### #3  `build_height`  *(mm)*
-- **의미**: 슈퍼복셀의 z-중심 높이.
-- **계산**: `grid.get_z_center_mm(iz)` — z-블록 인덱스 → 빌드 플레이트 기준 mm.
-- **물리적 동기**: 누적 열 이력, 분말 베드 상태가 높이에 따라 변화.
+---
+
+## G3 — CAD/좌표 기하 피처 (#1–3)
+
+3개 모두 `slices/part_ids` (uint, 0=배경 / 양수=part ID) 또는 SV 좌표만 사용. **CAD 픽셀이 많은 레이어에 더 큰 가중치**.
+
+### #1 `distance_from_edge` *(mm)*
+
+- **의미**: 각 픽셀에서 part 외곽까지의 in-plane(같은 레이어) Euclidean 거리.
+- **출처**: `slices/part_ids` 한 레이어.
+- **레이어별 픽셀 맵 계산** ([features.py:155-166](features.py#L155-L166)):
+  ```python
+  cad_mask = part_layer > 0                              # (1842, 1842) bool
+  if cad_mask.any():
+      dist = distance_transform_edt(cad_mask) * pixel_size_mm   # 외곽까지 mm
+      dist = min(dist, DIST_EDGE_SATURATION_MM = 3.0 mm)        # ≥3 mm 동일 취급
+      dist_smooth = gaussian_filter(dist, σ = 3.76 px)
+  else:
+      dist_smooth = zeros((1842, 1842))
+  ```
+  `scipy.ndimage.distance_transform_edt`: True 픽셀에서 가장 가까운 False 픽셀까지의 Euclidean 거리(픽셀 단위).
+- **SV 단위 집계** (xy → 70 layer; [features.py:183-195](features.py#L183-L195)):
+  ```
+  for layer in [iz*70, (iz+1)*70):
+      patch     = dist_smooth[r0:r1, c0:c1]   # ≈8×8 px
+      patch_cad = cad_mask[r0:r1, c0:c1]
+      n_cad     = patch_cad.sum()
+      if n_cad > 0:
+          accum  += patch[patch_cad].mean() * n_cad   # CAD 픽셀 수 가중
+          counts += n_cad
+  feature[v, 0] = accum / counts                       # CAD-가중 z-평균
+  ```
+- **물리적 동기**: 외곽 근처는 열 전달 비대칭 → 미세조직 차이.
+- **포화 의미**: ≥ 3 mm = "part 안쪽" 으로 동일 취급 (외곽 효과는 ~3 mm 이내).
+
+### #2 `distance_from_overhang` *(layers, ≈ 픽셀 거리)*
+
+- **의미**: 픽셀에서 가장 가까운 **오버행 영역**까지의 거리. 거리값이 작을수록 오버행 인접.
+- **오버행 정의**: 현재 레이어에 part 가 있고 **바로 직전(prev) 레이어**에는 없는 픽셀.
+  ```
+  overhang = cad_mask ∧ ¬prev_cad
+  ```
+  → 분말층 위에 단독으로 새로 출력되는 영역.
+- **레이어별 픽셀 맵 계산** ([features.py:169-180](features.py#L169-L180)):
+  ```python
+  if prev_cad is None or not overhang.any():
+      # 첫 레이어(prev 없음) 또는 이번 레이어에 오버행 없음 → saturation 으로 채움
+      dist_oh_smooth = full(image, DIST_OVERHANG_SATURATION_LAYERS = 71)
+  else:
+      dist_oh = distance_transform_edt(¬overhang)            # 단위: 픽셀
+      dist_oh = min(dist_oh, 71)                              # = SV_Z_LAYERS + 1
+      dist_oh_smooth = gaussian_filter(dist_oh, σ = 3.76 px)
+  prev_cad = cad_mask.copy()
+  ```
+  ⚠ **단위 주의**: 코드상 EDT 의 단위는 **픽셀** 인데, saturation 상한이 `layer 개수(71)` 에 맞춰져 있어 "layers" 로 표기됨. Scime 논문 정의를 그대로 차용한 단순화(픽셀↔레이어 1:1 가정).
+- **SV 단위 집계**: #1 과 동일한 CAD-가중 z-평균.
+- **z-블록 경계 효과**: `prev_cad` 는 z-블록 시작에서 None 으로 리셋되므로, 각 z-블록의 **첫 레이어는 항상 saturation(71)** 으로 시작. 70 layer 평균 시 작은 편향이 생길 수 있으나, CAD 가중 평균 + 평활화로 영향 미미.
+- **물리적 동기**: 오버행 영역은 열 전달 경로가 좁아 결함률 ↑. 인접도가 높을수록(거리 ↓) 결함 위험.
+
+### #3 `build_height` *(mm)*
+
+- **의미**: 슈퍼복셀의 z-방향 중심 높이 (빌드 플레이트 기준).
+- **출처**: SV 좌표 `iz` 만 사용 — **픽셀 데이터 접근 없음**.
+- **계산** ([supervoxel.py:64-68](../common/supervoxel.py#L64-L68), [features.py:96](features.py#L96)):
+  ```python
+  feature[v, 2] = ((l0 + l1) / 2) * LAYER_THICKNESS_MM
+  # 예) iz=0  → (0+70)/2 × 0.05 = 1.75 mm
+  # 예) iz=10 → (700+770)/2 × 0.05 = 36.75 mm
+  ```
+- **공간/시간 집계**: 없음. 같은 `iz` 의 모든 SV 가 동일 값.
+- **물리적 동기**: 누적 열 이력, 분말 베드 두께 변화, 챔버 환경 시계열 효과를 단일 스칼라로 캡처.
 
 ---
 
 ## G1 — DSCNN 세그멘테이션 피처 (#4–11)
 
-`slices/segmentation_results/{class_id}` (HDF5 12 클래스 → 논문 8 클래스 매핑) 의 픽셀별 0/1 마스크에 가우시안 블러 σ ≈ 3.76 px 적용 후 슈퍼복셀 영역 내 CAD 픽셀의 평균을 누적.
-**값 범위**: [0, 1] — 슈퍼복셀 내 해당 결함의 평균 발생 비율.
+- **출처**: `slices/segmentation_results/{class_id}` (HDF5 12 클래스 → 논문 8 채널 매핑, [config.py:DSCNN_FEATURE_MAP](../common/config.py#L53)).
+- **레이어별 픽셀 맵 계산** ([features.py:215-223](features.py#L215-L223)):
+  ```python
+  for cls in [0, 1, 3, 5, 6, 7, 8, 10]:                       # HDF5 cls id 8개
+      seg = f["slices/segmentation_results/{cls}"][layer]      # (1842, 1842) 0/1
+      seg_smoothed[ci] = gaussian_filter(seg.astype(float32), σ = 3.76 px)
+  ```
+- **SV 단위 집계**: G3 와 동일한 **CAD 가중 z-평균** ([features.py:225-234](features.py#L225-L234)). CAD 픽셀이 0인 레이어는 무시 (분말 영역 등).
+- **값 범위**: [0, 1] — SV 내 CAD 픽셀 위에서 본 해당 결함 클래스의 평균 발생 비율.
 
 | # | 0-based | 이름 | HDF5 cls | 의미 |
 |:--:|:--:|:----|:--:|:----|
@@ -57,14 +139,21 @@
 | 10 | 9 | `seg_soot` | 8 | 매연/응축물 |
 | 11 | 10 | `seg_excessive_melting` | 10 | 과용융 — Keyhole 모드 후보 |
 
-매핑 정의: `Sources/vppm/common/config.py:DSCNN_FEATURE_MAP`.
+매핑 정의: [Sources/vppm/common/config.py:DSCNN_FEATURE_MAP](../common/config.py#L53).
 
 ---
 
 ## G2 — 프린터 센서 피처 (#12–18)
 
-`temporal/*` 데이터셋(빌드당 레이어 수 만큼의 1D 시계열) 을 슈퍼복셀의 z-블록(70 layer) 구간에서 단순 평균.
-**공간적으로는 균일** (한 z-블록 내 모든 슈퍼복셀이 같은 값).
+- **출처**: `temporal/{key}` — (num_layers,) 1D 시계열 (빌드 전체 길이).
+- **계산** ([features.py:104-108](features.py#L104-L108)):
+  ```python
+  for ti, key in enumerate(TEMPORAL_FEATURES):
+      vals = f["temporal/{key}"][l0:l1]                  # 길이 70
+      feature[v, 11+ti] = vals.mean()                    # 단순 산술 평균
+  ```
+- **공간 분포**: **한 z-블록 안의 모든 SV 가 동일 값**. 픽셀 맵 없음.
+- **결측**: 키가 HDF5 에 없으면 NaN — 후속 NaN 마스크가 SV 전체를 드롭.
 
 | # | 0-based | 이름 | HDF5 키 | 단위 | 설명 |
 |:--:|:--:|:----|:----|:--:|:----|
@@ -76,66 +165,150 @@
 | 17 | 16 | `bottom_flow_temperature` | `temporal/bottom_flow_temperature` | °C | 하부 가스 온도 |
 | 18 | 17 | `actual_ventilator_flow_rate` | `temporal/actual_ventilator_flow_rate` | L/min | 실측 환기 유량 |
 
-매핑 정의: `Sources/vppm/common/config.py:TEMPORAL_FEATURES`.
+매핑 정의: [Sources/vppm/common/config.py:TEMPORAL_FEATURES](../common/config.py#L68).
 
 ---
 
 ## G4 — 레이저 스캔 경로 피처 (#19–21)
 
-### #19  `laser_module`  *(이진 0/1)*
-- **의미**: 해당 part 가 어느 레이저 모듈로 출력되었는지.
-- **계산**: `parts/process_parameters/laser_module` 값 = 1 → `0.0`, 그 외 → `1.0`.
-- **공간 해상도**: part 단위 (한 슈퍼복셀이 part 하나에 속하므로 동일 part 내 균일).
-- **물리적 동기**: 다중 레이저 시스템에서 모듈별 캘리브레이션 차이 보정.
+스캔 그룹은 두 출처를 모두 사용 — `parts/process_parameters/laser_module` (part 메타) + `scans/{layer}` (레이저 경로). 좌표계 변환·래스터화·이웃 필터가 가장 정교한 그룹.
 
-### #20  `laser_return_delay`  *(s)*
-- **의미**: 1mm × 1mm 이웃 영역 안에서 *재용융 시간 간격*. 인접 픽셀이 시간 차이를 두고 다시 스캔될 때의 냉각 시간 proxy.
-- **계산** (`scan_features.py`):
-  1. `scans/{layer}` (M × 5 = `x_start, x_end, y_start, y_end, time`) 를 1842×1842 melt-time 맵으로 래스터화 (`build_melt_time_map`). Y 축은 build-plate ↔ image 변환 시 flip.
-  2. 1mm 박스 커널(≈ 8 px) 안에서 `max(time) − min(time)` (`compute_return_delay_map`).
-  3. `sat_s = 0.5 s` 로 clip (스트라이프 경계의 거대 점프 제거).
-- **NaN 처리**: 미용융 픽셀은 NaN. 슈퍼복셀 안에 melt 픽셀이 1개도 없으면 누적 0 (= "스캔 활동 없음").
-- **물리적 동기**: 짧은 return delay = 같은 자리 빠르게 재가열 → 누적열 증가, 미세조직 변화.
+### #19 `laser_module` *(이진 0/1)*
 
-### #21  `laser_stripe_boundaries`  *(a.u. — Sobel RMS)*
-- **의미**: 스트라이프(스캔 경계) 밀도. 스캔 패턴이 갈라지는 곳의 시간 점프 신호.
-- **계산** (`scan_features.py:compute_stripe_boundaries_map`):
-  1. melt-time 맵에서 NaN → 0 으로 채움.
-  2. Sobel(축0), Sobel(축1) 의 RMS = √(Sx² + Sy²).
-  3. 미용융 픽셀은 결과 = 0 (정의상 경계 신호 없음 + 슈퍼복셀 평균 시 NaN 회피).
-- **물리적 동기**: 스트라이프 경계는 용융풀 간섭 / 결함 핵 생성 위치 — 밀도가 높을수록 잠재 결함 多.
+- **출처**: `parts/process_parameters/laser_module` — (n_parts,) int.
+- **계산** ([features.py:111-117](features.py#L111-L117), [features.py:137-143](features.py#L137-L143)):
+  ```python
+  lm_data = f["parts/process_parameters/laser_module"][...]
+  laser_modules = {pid: int(lm_data[pid]) for pid where !nan}
+  pid = valid_voxels["part_ids"][v]
+  feature[v, 18] = 0.0 if laser_modules[pid] == 1 else 1.0
+  ```
+- **공간 해상도**: part 단위. SV → 우세 part_id (find_valid_supervoxels) → laser_module 룩업.
+- **z 집계**: 없음 (한 part 내 모든 SV 동일 값).
+- **물리적 동기**: 다중 레이저 시스템(예: 2 모듈)에서 모듈별 캘리브레이션·출력 변동 보정 신호.
 
-스캔 피처 구현: `Sources/vppm/origin/scan_features.py`. 단위 테스트: `Sources/tests/test_scan_features.py`.
+### #20 `laser_return_delay` *(s)*
+
+같은 영역에 레이저가 다시 돌아오기까지의 시간 차 = 냉각 시간 proxy.
+
+#### Step 1 — Rasterization ([scan_features.py:24-119](scan_features.py#L24-L119))
+
+- 입력: `scans/{layer}` = (M, 5) — 각 행 = `(x_start, x_end, y_start, y_end, time)`. 단위 mm, s.
+- 좌표 변환 (Y flip):
+  ```python
+  c0 = round(x_start / pixel_size_mm);  c1 = round(x_end / pixel_size_mm)
+  r0 = (H-1) - round(y_start / pixel_size_mm)
+  r1 = (H-1) - round(y_end   / pixel_size_mm)
+  ```
+- 영역 밖 세그먼트 폐기 (양 끝점 모두 밖이면 drop, 한쪽만 밖이면 부분 라인 유지).
+- 세그먼트 길이별 분기 (성능 최적화):
+  - **Sub-pixel 세그먼트** (`max(|c1-c0|, |r1-r0|) == 0`, 약 89%) — 끝점 1픽셀만 기록. `np.minimum.at(mt, (r,c), t)` 한 번에 처리.
+  - **Multi-pixel 세그먼트** — `L = length+1` 픽셀로 선형 보간:
+    ```
+    frac = local_idx / (L-1)        # 0..1
+    r = round(r0 + frac*(r1-r0))
+    c = round(c0 + frac*(c1-c0))
+    ```
+    벡터화: `np.repeat` + `linspace` 합산.
+- 충돌 처리: 같은 픽셀에 여러 세그먼트 → **가장 빠른 시각** (`np.minimum.at`) — 최초 용융 시각만 기록.
+- **출력**: `mt_map (1842, 1842) float32` — 미용융 픽셀 = NaN. 메모리 13 MB, 영구 캐시하지 않고 레이어별 즉시 계산 + 폐기.
+
+#### Step 2 — Return delay map ([scan_features.py:125-163](scan_features.py#L125-L163))
+
+```python
+kernel_px = round(1 mm / pixel_size_mm) = 8                 # 정사각형 박스
+mt_for_max = where(valid, mt_map, -inf)                      # NaN sentinel
+mt_for_min = where(valid, mt_map, +inf)
+max_map = scipy.ndimage.maximum_filter(mt_for_max, size=8)
+min_map = scipy.ndimage.minimum_filter(mt_for_min, size=8)
+valid_kernel = isfinite(max_map) & isfinite(min_map)         # 커널 안에 유효 픽셀 0개면 NaN
+delay = max_map - min_map                                    # (s)
+delay = min(delay, sat_s = 0.5)                              # saturation
+delay[~mt_valid] = NaN                                       # 미용융 픽셀은 항상 NaN
+```
+- 1 mm 이웃 안 `max(time) − min(time)` = 같은 영역이 다시 스캔되는 데 걸린 시간.
+- `sat_s = 0.5 s` clip: 스트라이프 경계 / 분리된 부품 사이의 거대 점프(여러 분 단위) 제거 — 같은 mm 안에서의 의미 있는 재용융 간격만 남김.
+
+#### Step 3 — SV 단위 집계 ([features.py:240-288](features.py#L240-L288))
+
+```python
+for layer in [l0, l1):
+    if "scans/{layer}" not in f: continue
+    mt = build_melt_time_map(scans, (1842, 1842), pixel_size_mm)
+    rd_map = compute_return_delay_map(mt, kernel_px=8, sat_s=0.5)
+    sb_map = compute_stripe_boundaries_map(mt)               # #21 도 같이 계산
+    for each SV in z-block:
+        rd_patch = rd_map[r0:r1, c0:c1]
+        rd_valid = ~isnan(rd_patch)                          # SV 안 melt 픽셀
+        if rd_valid.any():
+            accum[v, 0]  += rd_patch[rd_valid].mean()
+            accum[v, 1]  += sb_patch[rd_valid].mean()        # #21 동일 mask
+            counts[v]    += 1                                 # 레이어 단위 카운트
+feature[v, 19] = accum[v, 0] / counts[v]                     # 단순 평균 (레이어 가중 동일)
+# 70 layer 모두 melt 없음 → 0 (NaN 으로 두면 SV 전체 드롭됨, 의도적으로 0)
+```
+
+- **G3/G1 와의 누적 규칙 차이**: G3/G1 은 "CAD 픽셀 수" 가중, G4 는 "유효 레이어(melt 1픽셀 이상)" 단위 단순 평균.
+- **물리적 동기**: 짧은 return delay = 같은 영역 빠르게 재가열 → 누적열 ↑, 결정립 / 석출물 변화. 0.5 s clip 으로 부품 간 시간 점프 제거 → 진짜 "재용융 간격" 만 보전.
+
+### #21 `laser_stripe_boundaries` *(a.u. — Sobel RMS)*
+
+스캔 패턴(스트라이프) 경계 = melt-time 의 시간 점프가 큰 곳 = 용융풀 간섭 / 결함 핵 발생 위치.
+
+#### Step 1 — Rasterization
+#20 과 동일한 `mt_map` 재사용 (한 레이어당 한 번만 계산).
+
+#### Step 2 — Sobel RMS ([scan_features.py:169-190](scan_features.py#L169-L190))
+
+```python
+mt_filled = nan_to_num(mt_map, nan=0.0).astype(float32)      # NaN → 0
+sx = sobel(mt_filled, axis=0, mode="constant", cval=0.0)     # row 미분
+sy = sobel(mt_filled, axis=1, mode="constant", cval=0.0)     # col 미분
+sb = sqrt(sx² + sy²).astype(float32)                          # gradient magnitude
+sb[~mt_valid] = 0.0                                           # 미용융 픽셀 = 0
+```
+- 미용융 픽셀에서 NaN→0 으로 인공 경계가 생기지만, SV 평균 시 melt 픽셀(`rd_valid`)만 카운트하므로 영향 미미.
+- 미용융 픽셀에 0 을 넣는 건 NaN 의 평균 전파를 회피하기 위한 의도적 선택.
+
+#### Step 3 — SV 단위 집계
+#20 의 Step 3 와 동일 (같은 `rd_valid` 마스크, 같은 레이어 카운트).
+
+- **물리적 동기**: 스트라이프 경계 = 인접 스캔 라인 사이 시간차 큰 곳. 용융풀 간섭이 약하고 미용융·산화·LOF 결함 발생 위치. 밀도가 높을수록 잠재 결함 多.
 
 ---
 
-## 공간/시간 집계 규칙
+## 공간/시간 집계 규칙 — 그룹별 비교
 
-각 슈퍼복셀(ix, iy, iz) 의 피처 값은 다음 절차로 계산:
+| 그룹 | xy 패치 (한 레이어) | z-축 (70 layer) | 레이어 가중치 | 결측 처리 |
+|:--|:--|:--|:--|:--|
+| **G3 #1–2** | CAD 픽셀 위 평균 | 가중 평균 | `n_cad_pixels` | NaN (이론상 발생 X) |
+| **G3 #3** | — | (직접 할당) | — | — |
+| **G1 #4–11** | CAD 픽셀 위 평균 | 가중 평균 | `n_cad_pixels` | NaN |
+| **G2 #12–18** | (공간 균일) | 단순 평균 | 레이어당 1 | 키 부재 시 NaN |
+| **G4 #19** | (part 단위) | (직접 할당) | — | NaN (lm = NaN) |
+| **G4 #20–21** | melt 픽셀 위 평균 | 단순 평균 | melt 있는 레이어당 1 | 모두 미용융 → 0 (의도적) |
+
+### 통합 의사코드
 
 ```
-for layer in [iz × 70, (iz+1) × 70):
-    map_layer = (피처별 픽셀 맵 — 위 정의)
-    patch     = map_layer[r0:r1, c0:c1]   # 슈퍼복셀의 7.52×7.52 px 영역
-    valid     = (CAD 마스크 / melt 마스크 등 — 피처별)
-    if valid.any():
-        accum[v] += patch[valid].mean() × valid.sum()
-        counts[v] += valid.sum()
-feature[v] = accum[v] / counts[v]      # z-방향 픽셀 가중 평균
+for each SV (ix, iy, iz):
+    accum, counts = 0, 0
+    for layer in [iz*70, (iz+1)*70):
+        map_layer = featureSpecificMap(layer)        # 위 정의
+        patch     = map_layer[r0:r1, c0:c1]          # ≈ 8×8 px
+        valid     = featureSpecificMask(layer)       # CAD 마스크 / melt 마스크 / 항상 True
+        if valid.any():
+            weight  = valid.sum()  if group in (G3, G1)  else 1
+            accum  += patch[valid].mean() * weight
+            counts += weight
+    feature[v] = accum / counts                       # NaN 가능 (counts == 0)
 ```
-
-- **CAD 그룹 (#1–2)**: `cad_mask` 를 가중치로 사용 (CAD 픽셀이 많은 레이어가 더 큰 영향).
-- **DSCNN 그룹 (#4–11)**: 동일하게 CAD 가중.
-- **센서 그룹 (#12–18)**: 픽셀 맵 없이 z-블록 70 layer 단순 평균.
-- **`build_height` (#3)**: 픽셀 집계 없이 슈퍼복셀의 z-중심.
-- **`laser_module` (#19)**: part 단위 직접 할당 (집계 없음).
-- **스캔 그룹 (#20–21)**: 슈퍼복셀 안에 melt 된 픽셀이 1개라도 있는 레이어만 카운트, 단순 평균.
 
 ---
 
 ## Ablation 그룹 인덱스
 
-`Sources/vppm/common/config.py:FEATURE_GROUPS` (0-based):
+[Sources/vppm/common/config.py:FEATURE_GROUPS](../common/config.py) (0-based):
 
 ```python
 {
@@ -152,14 +325,20 @@ feature[v] = accum[v] / counts[v]      # z-방향 픽셀 가중 평균
 
 ## 정규화 / 결측
 
-- 학습 직전 `Sources/vppm/origin/run_pipeline.py` 에서 NaN 슈퍼복셀 드롭 후 z-score 정규화.
+- 학습 직전 [run_pipeline.py](../run_pipeline.py)에서 NaN 슈퍼복셀 드롭 후 z-score 정규화.
 - 타겟(YS/UTS/UE/TE)은 [-1, 1] 정규화 → L1 손실.
+- NaN 발생 케이스:
+  1. **G2 센서**: `temporal/{key}` 가 HDF5 에 없을 때 → 해당 SV 드롭.
+  2. **G3 #1–2 / G1**: z-블록 70 layer 모두 CAD 픽셀 0 — 이론상 valid SV 에서는 발생 X.
+  3. **G4 #20–21**: melt 픽셀 0 → **0 으로 채움** (NaN 아님 — 드롭 회피용 의도적 처리).
+  4. **G4 #19**: `laser_module` 이 NaN 인 part → SV 드롭.
 
 ---
 
 ## 참고 코드
 
-- 피처 추출 메인: `Sources/vppm/origin/features.py` — `FeatureExtractor.extract_features`
-- 스캔 경로 알고리즘: `Sources/vppm/origin/scan_features.py`
-- 슈퍼복셀 그리드: `Sources/vppm/common/supervoxel.py`
-- 설정 / 매핑: `Sources/vppm/common/config.py`
+- 피처 추출 메인: [Sources/vppm/baseline/features.py](features.py) — `FeatureExtractor.extract_features`
+- 스캔 경로 알고리즘: [Sources/vppm/baseline/scan_features.py](scan_features.py)
+- 슈퍼복셀 그리드: [Sources/vppm/common/supervoxel.py](../common/supervoxel.py)
+- 설정 / 매핑: [Sources/vppm/common/config.py](../common/config.py)
+- 단위 테스트: `Sources/tests/test_scan_features.py`

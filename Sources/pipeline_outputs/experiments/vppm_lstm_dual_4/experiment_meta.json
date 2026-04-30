@@ -1,0 +1,34 @@
+{
+  "n_baseline_feats": 21,
+  "d_embed_v0": 4,
+  "d_embed_v1": 4,
+  "n_total_feats": 29,
+  "T_max": 70,
+  "crop_h": 8,
+  "crop_w": 8,
+  "camera_channels": [
+    0,
+    1
+  ],
+  "share_cnn": false,
+  "share_lstm": false,
+  "cnn": {
+    "ch1": 16,
+    "ch2": 32,
+    "kernel": 3,
+    "d_cnn": 32
+  },
+  "lstm": {
+    "d_hidden": 16,
+    "num_layers": 1,
+    "bidirectional": false
+  },
+  "train": {
+    "lr": 0.001,
+    "batch_size": 256,
+    "max_epochs": 5000,
+    "early_stop_patience": 50,
+    "grad_clip": 1.0,
+    "weight_decay": 0.0
+  }
+}
