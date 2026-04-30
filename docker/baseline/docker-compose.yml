@@ -1,5 +1,5 @@
 # Baseline VPPM 학습 — 21-feat (실 구현 scan 포함) 5-Fold CV
-# train + evaluate 를 순차 실행. 산출물: pipeline_outputs/{models,results/vppm_origin}/
+# train + evaluate 를 순차 실행. 산출물: pipeline_outputs/{models,results}/
 #
 # 사용법 — `.env` 파일이 GPU/UID 기본값을 들고 있어 한 줄로 끝남:
 #
@@ -51,4 +51,4 @@ services:
         echo "[baseline] train → evaluate"
         $$VENV_PY -m Sources.vppm.run_pipeline --phase train
         $$VENV_PY -m Sources.vppm.run_pipeline --phase evaluate
-        echo "[baseline] Done. Results → Sources/pipeline_outputs/results/vppm_origin/"
+        echo "[baseline] Done. Results → Sources/pipeline_outputs/results/"

@@ -125,7 +125,7 @@ def build_melt_time_map(
 def compute_return_delay_map(
     mt_map: np.ndarray,
     kernel_px: int,
-    sat_s: float = 0.5,
+    sat_s: float = 0.75,
 ) -> np.ndarray:
     """melt-time 맵 → return-delay 맵.
 
@@ -136,6 +136,8 @@ def compute_return_delay_map(
         mt_map: (H, W) float — 미용융은 NaN.
         kernel_px: 사각형 커널 크기 (홀수 권장).
         sat_s: 큰 점프 (스트라이프 경계, 분리된 영역 간 시간차) 를 제거하기 위한 saturation.
+               기본값 0.75 s — Scime et al. 2023 Materials, 16, 7293 Appendix D Table A5
+               에서 보고된 #20 의 max 값(0.750)에 맞춤.
 
     Returns:
         delay: (H, W) float32 — 미용융 영역은 NaN.

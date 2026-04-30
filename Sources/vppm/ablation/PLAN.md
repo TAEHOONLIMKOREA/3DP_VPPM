@@ -4,7 +4,7 @@
 > 슈퍼복셀 단위 입력 피처를 소스(데이터 종류) 기준으로 분해하고, 한 번에 한 그룹(또는 채널)을
 > 제거했을 때 4 개 타겟(YS / UTS / UE / TE) RMSE 변화를 측정한다.
 >
-> **기준 모델 (E0 Baseline)**: 21-feat, 5-Fold CV — [results/vppm_origin/metrics_raw.json](../../pipeline_outputs/results/vppm_origin/metrics_raw.json)
+> **기준 모델 (E0 Baseline)**: 21-feat, 5-Fold CV — [experiments/vppm_baseline/results/metrics_raw.json](../../pipeline_outputs/experiments/vppm_baseline/results/metrics_raw.json)
 >
 > **종합 결과 보고서 (v2)**: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md) — 배경 / 27 실험 결과 / 그룹별 해석 / 후속 로드맵.
 

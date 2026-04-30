@@ -36,13 +36,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from Sources.vppm.common import config
 from Sources.vppm.common.dataset import build_dataset, save_norm_params
-from Sources.vppm.origin.evaluate import (
+from Sources.vppm.baseline.evaluate import (
     evaluate_all,
     plot_correlation,
     plot_scatter_uts,
     save_metrics,
 )
-from Sources.vppm.origin.train import train_all
+from Sources.vppm.baseline.train import train_all
 
 ABLATION_DIR = config.OUTPUT_DIR / "ablation"
 
@@ -233,10 +233,11 @@ def write_summary_md(all_runs: dict[str, dict]) -> None:
     ABLATION_DIR.mkdir(parents=True, exist_ok=True)
     path = ABLATION_DIR / "summary.md"
 
-    # baseline(21-feat) metrics 는 리팩터 후 results/vppm_origin/ 로 옮겨졌다.
-    # 과거 경로(results/metrics_raw.json)도 fallback 으로 지원.
+    # baseline(21-feat) metrics 는 experiments/vppm_baseline/results/ 에 저장됨.
+    # 과거 root-level 경로(results/metrics_raw.json)도 fallback 으로 지원.
     baseline = None
-    for candidate in (config.RESULTS_DIR / "vppm_origin" / "metrics_raw.json",
+    for candidate in (config.OUTPUT_DIR / "experiments" / "vppm_baseline" / "results" / "metrics_raw.json",
+                      config.RESULTS_DIR / "vppm_baseline" / "metrics_raw.json",
                       config.RESULTS_DIR / "metrics_raw.json"):
         if candidate.exists():
             with open(candidate) as f:

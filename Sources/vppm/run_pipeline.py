@@ -24,10 +24,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from Sources.vppm.common import config
 from Sources.vppm.common.supervoxel import SuperVoxelGrid, find_valid_supervoxels
-from Sources.vppm.origin.features import FeatureExtractor
+from Sources.vppm.baseline.features import FeatureExtractor
 from Sources.vppm.common.dataset import build_dataset, save_norm_params
-from Sources.vppm.origin.train import train_all
-from Sources.vppm.origin.evaluate import (
+from Sources.vppm.baseline.train import train_all
+from Sources.vppm.baseline.evaluate import (
     evaluate_all, save_metrics, plot_correlation, plot_scatter_uts,
 )
 

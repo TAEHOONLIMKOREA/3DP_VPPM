@@ -36,7 +36,7 @@ VPPM 모델 (Scime et al., Materials 2023) 의 21 개 입력 피처를 4 개 데
 | **G3 CAD / 좌표**      | 0–2   | 3 | distance_edge / distance_overhang / build_height | 파트 형상 |
 | **G4 스캔 (Laser)**    | 18–20 | 3 | laser_module / laser_return_delay / laser_stripe_boundaries | HDF5 `scans/{layer}` |
 
-> 특히 G4 의 `return_delay` 와 `stripe_boundaries` 는 [scan_features.py](../../vppm/origin/scan_features.py) 가
+> 특히 G4 의 `return_delay` 와 `stripe_boundaries` 는 [scan_features.py](../../vppm/baseline/scan_features.py) 가
 > HDF5 의 (M, 5) 스캔 라인 세그먼트를 1842×1842 melt-time 맵으로 래스터라이즈한 후, 1 mm 커널 max−min
 > 필터 / Sobel RMS 로 추출한 값.
 

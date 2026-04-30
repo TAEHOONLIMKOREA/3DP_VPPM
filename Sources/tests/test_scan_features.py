@@ -1,4 +1,4 @@
-"""Sources/vppm/origin/scan_features.py 단위 테스트.
+"""Sources/vppm/baseline/scan_features.py 단위 테스트.
 
 실행:
     ./venv/bin/python -m pytest Sources/tests/test_scan_features.py -v
@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from Sources.vppm.origin.scan_features import (
+from Sources.vppm.baseline.scan_features import (
     build_melt_time_map,
     compute_return_delay_map,
     compute_stripe_boundaries_map,

@@ -68,6 +68,17 @@ class FeatureExtractor:
         n_voxels = len(indices)
         features = np.full((n_voxels, 21), np.nan, dtype=np.float32)
 
+        # #2 distance_from_overhang: vertical-column 거리용 누적 상태
+        #   - prev_cad_layer  : 직전 레이어의 CAD 마스크 (z-block 경계 넘어 carry-over)
+        #   - last_overhang_layer : 각 픽셀에서 가장 최근 오버행이 발생한 layer index.
+        #     아직 오버행이 검출되지 않은 픽셀은 -inf → distance = +inf → saturate(71).
+        self._prev_cad_layer = None
+        self._last_overhang_layer = np.full(
+            (self.grid.image_h, self.grid.image_w),
+            -np.inf,
+            dtype=np.float32,
+        )
+
         with h5py.File(self.hdf5_path, "r") as f:
             # 시간적 데이터 미리 로드 (작음)
             temporal_data = self._load_temporal(f)
@@ -144,13 +155,23 @@ class FeatureExtractor:
 
     def _extract_cad_features_block(self, f, block_voxels, block_indices,
                                      l0, l1, part_ids_arr):
-        """z-block 내 CAD 피처 (distance_from_edge, distance_from_overhang) 추출"""
+        """z-block 내 CAD 피처 (distance_from_edge, distance_from_overhang) 추출.
+
+        피처 #2 (`distance_from_overhang`) 는 Scime et al. 2023 Appendix D Table A2
+        정의에 따라 **수직(z-축) column 거리** 로 계산:
+          - 오버행 = 분말 위에 새로 출력된 영역 = (current CAD) ∧ ¬(prev CAD)
+          - 빌드 첫 레이어는 빌드 플레이트 위에 출력 → overhang 미검출
+          - 각 픽셀에서 dist = (현재 layer) − (가장 최근 overhang 발생 layer)
+          - 71 layer 이상은 saturate
+        상태(`self._prev_cad_layer`, `self._last_overhang_layer`)는 z-block 경계 넘어
+        carry-over 되며, `extract_features` 진입 시 1회 초기화.
+        """
         n = len(block_indices)
         accum = np.zeros((n, 2), dtype=np.float64)
         counts = np.zeros(n, dtype=np.float64)
 
         part_ids_ds = f["slices/part_ids"]
-        prev_cad = None
+        sat_layers = float(config.DIST_OVERHANG_SATURATION_LAYERS)
 
         for layer in range(l0, l1):
             part_layer = part_ids_ds[layer]
@@ -164,20 +185,19 @@ class FeatureExtractor:
             else:
                 dist_smooth = np.zeros_like(part_layer, dtype=np.float32)
 
-            # 피처 2: distance from overhang (simplified)
-            # 오버행 = 현재 레이어에 CAD 있지만 바로 아래에는 없는 영역
-            if prev_cad is not None:
-                overhang = cad_mask & (~prev_cad)
+            # 피처 2: vertical-column distance from overhang
+            # 빌드 첫 레이어(prev = None)는 빌드 플레이트 위 출력 → overhang 미검출
+            if self._prev_cad_layer is not None:
+                overhang = cad_mask & (~self._prev_cad_layer)
                 if overhang.any():
-                    dist_oh = distance_transform_edt(~overhang).astype(np.float32)
-                    dist_oh = np.minimum(dist_oh, config.DIST_OVERHANG_SATURATION_LAYERS)
-                    dist_oh_smooth = gaussian_filter(dist_oh, sigma=self.sigma_px)
-                else:
-                    dist_oh_smooth = np.full_like(part_layer, config.DIST_OVERHANG_SATURATION_LAYERS, dtype=np.float32)
-            else:
-                dist_oh_smooth = np.full_like(part_layer, config.DIST_OVERHANG_SATURATION_LAYERS, dtype=np.float32)
+                    self._last_overhang_layer[overhang] = float(layer)
 
-            prev_cad = cad_mask.copy()
+            # dist_oh = 현재 layer − 가장 최근 overhang layer (미검출 픽셀: +inf → saturate)
+            dist_oh_layers = float(layer) - self._last_overhang_layer
+            dist_oh_layers = np.minimum(dist_oh_layers, sat_layers).astype(np.float32)
+            dist_oh_smooth = gaussian_filter(dist_oh_layers, sigma=self.sigma_px)
+
+            self._prev_cad_layer = cad_mask.copy()
 
             # 각 슈퍼복셀 영역에서 평균
             for i, vi in enumerate(range(n)):
@@ -263,7 +283,7 @@ class FeatureExtractor:
                 continue
 
             mt = build_melt_time_map(scans, img_shape, config.PIXEL_SIZE_MM)
-            rd_map = compute_return_delay_map(mt, kernel_px=kernel_px, sat_s=0.5)
+            rd_map = compute_return_delay_map(mt, kernel_px=kernel_px, sat_s=0.75)
             sb_map = compute_stripe_boundaries_map(mt)
 
             for vi in range(n):
