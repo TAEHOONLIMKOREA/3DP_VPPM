@@ -1,0 +1,66 @@
+# stats_overhang — distance_from_overhang 피처 단일 통계 산출
+#
+# vppm-ablation:gpu 이미지(docker/ablation/Dockerfile)를 재사용.
+# GPU 의존 없음(CPU/numpy/scipy/h5py). nvidia runtime 은 기존 패턴 유지.
+#
+# 사용법:
+#   cd docker/stats_overhang
+#   docker compose up -d --build       # 백그라운드 풀런
+#   docker compose logs -f             # 진행 로그
+#   docker compose down                # 정리
+#
+# 부분 실행 (예: B1.3 만):
+#   STATS_OH_EXTRA="--builds B1.3" docker compose up -d --build
+#
+# PNG 없이 실행:
+#   STATS_OH_EXTRA="--no-plot" docker compose up -d --build
+services:
+  stats-overhang:
+    build:
+      context: ../..
+      dockerfile: docker/ablation/Dockerfile      # 공용 이미지 재사용
+    image: vppm-ablation:gpu
+    runtime: nvidia
+    user: "${UID_GID:-1000:1000}"
+    restart: "no"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-1}
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ../../venv:/workspace/venv:ro
+      # 원본 HDF5 (5개 빌드, ~230GB) — read-only
+      - ../../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
+      # 산출물 — rw (per_build/ 포함)
+      - ../../Sources/pipeline_outputs/figures/stats_overhang:/workspace/Sources/pipeline_outputs/figures/stats_overhang:rw
+    shm_size: "4gb"
+    working_dir: /workspace
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        VENV_PY=/workspace/venv/bin/python
+
+        # venv 마운트 확인
+        if [ ! -x "$$VENV_PY" ]; then
+          echo "[stats_overhang] FATAL: $$VENV_PY 없음 — 호스트 venv 가 마운트되지 않았습니다" >&2
+          exit 1
+        fi
+
+        # HDF5 데이터 확인 (B1.1 기준)
+        if [ ! -f "/workspace/ORNL_Data_Origin/2021-07-13 TCR Phase 1 Build 1.hdf5" ]; then
+          echo "[stats_overhang] FATAL: ORNL_Data_Origin HDF5 파일 없음 — 마운트를 확인하세요" >&2
+          exit 1
+        fi
+
+        # 산출물 디렉토리 확인
+        mkdir -p /workspace/Sources/pipeline_outputs/figures/stats_overhang/per_build
+
+        $$VENV_PY -c "import sys,h5py,numpy,scipy;print(f'[stats_overhang] python={sys.version.split()[0]} h5py={h5py.__version__} numpy={numpy.__version__} scipy={scipy.__version__}')"
+
+        echo "[stats_overhang] 실행 시작 → ${STATS_OH_EXTRA:-풀런 (5개 빌드)}"
+        $$VENV_PY -m Sources.vppm.tools.stats_overhang ${STATS_OH_EXTRA:-}
+        echo "[stats_overhang] Done. 산출물 → Sources/pipeline_outputs/figures/stats_overhang/"

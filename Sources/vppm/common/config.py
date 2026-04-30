@@ -257,3 +257,25 @@ LSTM_DUAL_4_FEATURES_DIR = LSTM_DUAL_4_EXPERIMENT_DIR / "features"
 # 캐시는 dual 과 공유 — 재추출 안 함
 LSTM_DUAL_4_CACHE_V0_DIR = LSTM_CACHE_DIR
 LSTM_DUAL_4_CACHE_V1_DIR = LSTM_DUAL_CACHE_DIR
+
+# ============================================================
+# VPPM-LSTM-Dual-Img-4-Sensor-7 (Sources/vppm/lstm_dual_img_4_sensor_7/PLAN.md)
+# ============================================================
+# 카메라 v0/v1 LSTM(d_embed=4) + sensor LSTM(d_embed=7) 3-분기.
+# G2(센서 7-feat 평균) 제거 → 14-feat baseline 사용 → MLP 입력 14+4+4+7 = 29 (dual_4 와 동일).
+
+LSTM_DUAL_IMG_4_SENSOR_7_N_CHANNELS = len(TEMPORAL_FEATURES)   # = 7
+LSTM_DUAL_IMG_4_SENSOR_7_D_HIDDEN_S = 16                        # sensor LSTM hidden
+LSTM_DUAL_IMG_4_SENSOR_7_D_EMBED_S = 7                          # sensor proj 출력
+LSTM_DUAL_IMG_4_SENSOR_7_NUM_LAYERS = 1
+LSTM_DUAL_IMG_4_SENSOR_7_BIDIRECTIONAL = False
+
+# 산출물 경로
+LSTM_DUAL_IMG_4_SENSOR_7_EXPERIMENT_DIR = OUTPUT_DIR / "experiments" / "vppm_lstm_dual_img_4_sensor_7"
+LSTM_DUAL_IMG_4_SENSOR_7_CACHE_DIR    = LSTM_DUAL_IMG_4_SENSOR_7_EXPERIMENT_DIR / "cache"
+LSTM_DUAL_IMG_4_SENSOR_7_MODELS_DIR   = LSTM_DUAL_IMG_4_SENSOR_7_EXPERIMENT_DIR / "models"
+LSTM_DUAL_IMG_4_SENSOR_7_RESULTS_DIR  = LSTM_DUAL_IMG_4_SENSOR_7_EXPERIMENT_DIR / "results"
+LSTM_DUAL_IMG_4_SENSOR_7_FEATURES_DIR = LSTM_DUAL_IMG_4_SENSOR_7_EXPERIMENT_DIR / "features"
+# 카메라 캐시는 lstm/lstm_dual 과 공유
+LSTM_DUAL_IMG_4_SENSOR_7_CACHE_V0_DIR = LSTM_CACHE_DIR
+LSTM_DUAL_IMG_4_SENSOR_7_CACHE_V1_DIR = LSTM_DUAL_CACHE_DIR

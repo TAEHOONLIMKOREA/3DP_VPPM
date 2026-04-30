@@ -316,6 +316,79 @@ for each SV (ix, iy, iz):
 
 ---
 
+## 평균 처리 방식별 분류 (1D CNN 시퀀스화 관점)
+
+위 G1/G2/G3/G4 는 **데이터 출처**별 분류고, 1D CNN 으로 z-축 시퀀스 입력을 만들 때는 **레이어 평균이 어떻게 들어갔는지**가 더 중요하다. baseline 의 21개 피처는 **평균 처리 방식**을 기준으로 4가지 패턴 (P1–P4)으로 갈라진다.
+
+| 패턴 | # | 피처 수 | 픽셀 평균 (xy patch) | 레이어 평균 (z) | 1D CNN 시퀀스화 |
+|:--:|:--:|:--:|:--|:--|:--:|
+| **P1** | 1, 2, 4–11 | 10 | ✅ CAD 픽셀에 한정한 평균 | ✅ **CAD 픽셀 수 가중** | ✅ |
+| **P2** | 20, 21 | 2 | ✅ NaN-제외 melt 픽셀 평균 | ✅ **유효 레이어 수 단순평균** | ✅ |
+| **P3** | 12–18 | 7 | ❌ (1D 시계열) | ✅ 70-layer 단순평균 | ✅ |
+| **P4** | 3, 19 | 2 | ❌ | ❌ (스칼라 직접 할당) | ❌ |
+
+### P1 — 픽셀 평균 + 레이어 CAD-가중평균 (10개)
+
+[features.py:_extract_cad_features_block](features.py#L156-L216), [features.py:_extract_dscnn_features_block](features.py#L218-L258):
+
+```python
+for layer in range(l0, l1):                                        # 70 layers
+    patch_cad = cad_mask[r0:r1, c0:c1]
+    n_cad     = patch_cad.sum()
+    if n_cad > 0:
+        accum  += dist_smooth[r0:r1, c0:c1][patch_cad].mean() * n_cad   # ① 픽셀 평균 (CAD-only)
+        counts += n_cad
+accum[valid] /= counts                                              # ② 레이어 CAD-가중평균
+```
+
+→ #1 distance_from_edge, #2 distance_from_overhang, #4–11 DSCNN 8개. raw 정보 shape `(70 layers, 8×8 픽셀, CAD-only)` → 2단계 평균 → 스칼라 1개.
+
+### P2 — 픽셀 평균 + 레이어 단순평균 (2개)
+
+[features.py:_extract_scan_features_block](features.py#L260-L308):
+
+```python
+for layer in range(l0, l1):
+    rd_valid = ~np.isnan(rd_patch)
+    if rd_valid.any():
+        accum[vi, 0] += rd_patch[rd_valid].mean()                   # ① 픽셀 평균 (NaN 제외)
+        counts[vi]   += 1
+out[ok] = accum[ok] / counts[ok]                                     # ② 레이어 단순평균
+```
+
+→ #20 laser_return_delay, #21 laser_stripe_boundaries. P1 과 차이: **CAD-가중 대신 "스캔 데이터 있는 layer 수"로 단순평균**.
+
+### P3 — 레이어 단순평균만 (7개)
+
+[features.py:104-108](features.py#L104-L108):
+
+```python
+vals = temporal_data[key][l0:l1]                                    # (70,) layer-level 시계열
+features[block_indices, 11+ti] = np.mean(vals)                       # 레이어 단순평균
+```
+
+→ #12–18 프린터 센서 7개. 이미 layer 단위 1D 시계열이므로 픽셀 처리 없음. 같은 z-블록 내 모든 supervoxel 이 **동일 값** 공유.
+
+### P4 — 평균 없음 (2개)
+
+[features.py:96](features.py#L96), [features.py:140](features.py#L140):
+
+```python
+features[block_indices, 2]  = self.grid.get_z_center_mm(iz)           # #3 build_height
+features[pidx, 18]          = 0.0 if laser_modules[pid] == 1 else 1.0 # #19 laser_module
+```
+
+→ #3 build_height (z-블록 중심 위치), #19 laser_module (part 단위 binary). 픽셀도 layer 도 보지 않음.
+
+### 1D CNN 시퀀스화 입력 결정
+
+P1+P2+P3 = **19개 채널** 을 `(70 layers, 19)` 시퀀스로 변환 가능.
+P4 = **2개 스칼라** 는 시퀀스화 의미 없음 (#3 은 등차수열, #19 는 상수).
+
+상세 설계는 [Sources/vppm/1dcnn/PLAN.md](../1dcnn/PLAN.md#23-어떤-피처를-시퀀스화하는가) 참조.
+
+---
+
 ## Ablation 그룹 인덱스
 
 [Sources/vppm/common/config.py:FEATURE_GROUPS](../common/config.py) (0-based):
