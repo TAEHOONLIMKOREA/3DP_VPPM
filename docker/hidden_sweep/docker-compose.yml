@@ -1,0 +1,71 @@
+# VPPM Hidden-Dim Sweep — baseline VPPM (Linear 21→hidden→1) 의 hidden_dim sweep.
+#
+# 측정: H1=1, H2=64, H3=256 (E0 baseline=128 은 기존 결과 재사용 — 재학습 X)
+#
+# 사용법
+#
+#   cd docker/hidden_sweep
+#
+#   # 전체 sweep (3 hidden × 4 prop × 5 fold = 60 run, 약 3~5 시간)
+#   docker compose up -d --build
+#   docker compose logs -f
+#   docker compose down
+#
+#   # 단일 hidden 만:
+#   HIDDEN_SWEEP_HIDDEN=64 docker compose up -d --build
+#
+#   # 추가 인자 (smoke test, summary 재생성 등):
+#   HIDDEN_SWEEP_EXTRA=--quick docker compose up
+#   HIDDEN_SWEEP_EXTRA=--rebuild-summary docker compose up
+#
+# 전제: Sources/pipeline_outputs/features/all_features.npz 존재.
+
+services:
+  hidden-sweep:
+    build:
+      context: ../..
+      dockerfile: docker/hidden_sweep/Dockerfile
+    image: vppm-hidden-sweep:gpu
+    container_name: vppm-hidden-sweep
+    runtime: nvidia
+    user: "${UID_GID:-1000:1000}"
+    restart: "no"
+    shm_size: "4gb"
+    working_dir: /workspace
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ../../venv:/workspace/venv:ro
+      - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
+      - ../../Sources/pipeline_outputs/results:/workspace/Sources/pipeline_outputs/results:ro
+      - ../../Sources/pipeline_outputs/experiments:/workspace/Sources/pipeline_outputs/experiments:ro
+      - ../../Sources/pipeline_outputs/ablation:/workspace/Sources/pipeline_outputs/ablation:rw
+    environment:
+      PYTHONPATH: /workspace
+      HOME: /tmp
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-0}
+      HIDDEN_SWEEP_HIDDEN: ${HIDDEN_SWEEP_HIDDEN:-all}
+      HIDDEN_SWEEP_EXTRA: ${HIDDEN_SWEEP_EXTRA:-}
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        VENV_PY=/workspace/venv/bin/python
+        [ -x "$$VENV_PY" ] || { echo "[hidden_sweep] FATAL: venv 미마운트 (host venv 가 ../../venv 에 있어야 함)" >&2; exit 1; }
+        [ -f /workspace/Sources/pipeline_outputs/features/all_features.npz ] || { echo "[hidden_sweep] FATAL: all_features.npz 없음 — 먼저 baseline feature 추출 필요" >&2; exit 1; }
+        [ -d /workspace/Sources/pipeline_outputs/ablation ] || { echo "[hidden_sweep] FATAL: ablation 디렉터리 미마운트" >&2; exit 1; }
+        if ! touch /workspace/Sources/pipeline_outputs/ablation/.write_test 2>/dev/null; then
+          echo "[hidden_sweep] FATAL: ablation 쓰기 권한 없음 — UID_GID 확인 (.env)" >&2; exit 1
+        fi
+        rm -f /workspace/Sources/pipeline_outputs/ablation/.write_test
+        $$VENV_PY -c "import torch,sys;print(f'[hidden_sweep] py={sys.version.split()[0]} torch={torch.__version__} cuda={torch.cuda.is_available()} devs={torch.cuda.device_count()}')"
+
+        # HIDDEN_SWEEP_HIDDEN=all → --all, 그 외엔 --hidden <N>
+        if [ "$${HIDDEN_SWEEP_HIDDEN:-all}" = "all" ]; then
+          MODE_ARGS="--all"
+        else
+          MODE_ARGS="--hidden $${HIDDEN_SWEEP_HIDDEN}"
+        fi
+        echo "[hidden_sweep] running: $$MODE_ARGS $${HIDDEN_SWEEP_EXTRA:-}"
+        exec $$VENV_PY -m Sources.vppm.ablation.run_hidden_sweep $$MODE_ARGS $${HIDDEN_SWEEP_EXTRA:-}

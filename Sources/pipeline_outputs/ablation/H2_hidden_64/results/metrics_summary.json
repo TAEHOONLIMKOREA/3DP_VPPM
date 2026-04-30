@@ -1,22 +1,22 @@
 {
   "YS": {
-    "vppm_rmse": "29.5 +/- 1.3",
+    "vppm_rmse": "24.2 +/- 0.7",
     "naive_rmse": "33.9",
-    "reduction_pct": "13%"
+    "reduction_pct": "29%"
   },
   "UTS": {
-    "vppm_rmse": "64.4 +/- 3.0",
+    "vppm_rmse": "43.1 +/- 1.5",
     "naive_rmse": "68.4",
-    "reduction_pct": "6%"
+    "reduction_pct": "37%"
   },
   "UE": {
-    "vppm_rmse": "14.0 +/- 0.5",
+    "vppm_rmse": "9.2 +/- 0.4",
     "naive_rmse": "15.0",
-    "reduction_pct": "7%"
+    "reduction_pct": "38%"
   },
   "TE": {
-    "vppm_rmse": "15.8 +/- 0.4",
+    "vppm_rmse": "11.4 +/- 0.4",
     "naive_rmse": "18.5",
-    "reduction_pct": "14%"
+    "reduction_pct": "38%"
   }
 }

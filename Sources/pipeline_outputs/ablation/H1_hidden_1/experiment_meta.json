@@ -1,0 +1,9 @@
+{
+  "exp_id": "H1",
+  "hidden_dim": 1,
+  "description": "Bottleneck=1 \u2014 1\ucc28\uc6d0 capacity \ud558\ud55c",
+  "n_feats": 21,
+  "n_params": 24,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}
