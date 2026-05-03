@@ -13,7 +13,7 @@ dscnn_8 모델에 CAD 패치(edge/overhang 근접도 8×8 패치)와 Scan 패치
 - `Sources/pipeline_outputs/experiments/vppm_lstm_dual/cache/crop_stacks_v1_B1.{1..5}.h5` (visible/1 캐시 — `docker/lstm_dual` 의 cache_v1 단계로 빌드)
 - `Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7/cache/sensor_stacks_B1.{1..5}.h5` (sensor 캐시 — `docker/lstm_dual_img_4_sensor_7` 의 cache_sensor 단계로 빌드)
 - `Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8/cache/dscnn_stacks_B1.{1..5}.h5` (dscnn 캐시 — `docker/lstm_dual_img_4_sensor_7_dscnn_8` 의 cache_dscnn 단계로 빌드)
-- `ORNL_Data_Origin/*.hdf5` (CAD/Scan 패치 캐시 빌드 시 필요)
+- `ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/[baseline] (Peregrine v2023-11)/*.hdf5` (CAD/Scan 패치 캐시 빌드 시 필요)
 
 사전조건 빠른 확인:
 
@@ -23,7 +23,7 @@ ls Sources/pipeline_outputs/experiments/vppm_lstm/cache/crop_stacks_B1.*.h5
 ls Sources/pipeline_outputs/experiments/vppm_lstm_dual/cache/crop_stacks_v1_B1.*.h5
 ls Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7/cache/sensor_stacks_B1.*.h5
 ls Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8/cache/dscnn_stacks_B1.*.h5
-ls ORNL_Data_Origin/*.hdf5 | wc -l   # 5개여야 함
+ls "ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/[baseline] (Peregrine v2023-11)/"*.hdf5 | wc -l   # 5개여야 함
 ```
 
 ## 빌드

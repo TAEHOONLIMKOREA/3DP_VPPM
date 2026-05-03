@@ -31,7 +31,8 @@ services:
       - /etc/group:/etc/group:ro
       - ../../venv:/workspace/venv:ro
       # 원본 HDF5 (cache 단계에서 필요) - read-only
-      - ../../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
+      # ORNL_Data/ 전체를 마운트 → config.HDF5_DIR 가 [baseline] (Peregrine v2023-11) 서브폴더를 가리킴
+      - ../../ORNL_Data:/workspace/ORNL_Data:ro
       # baseline features (입력) - read-only
       - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
       # LSTM 산출물 - rw
@@ -56,8 +57,9 @@ services:
           fi
         fi
         if [ "$${LSTM_PHASE}" = "cache" ] || [ "$${LSTM_PHASE}" = "all" ]; then
-          if [ ! -d /workspace/ORNL_Data_Origin ]; then
-            echo "[lstm] FATAL: ORNL_Data_Origin/ 가 마운트되지 않음 (cache 단계 필수)" >&2
+          HDF5_DIR="/workspace/ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/[baseline] (Peregrine v2023-11)"
+          if [ ! -d "$$HDF5_DIR" ]; then
+            echo "[lstm] FATAL: $$HDF5_DIR 가 마운트되지 않음 (cache 단계 필수)" >&2
             exit 1
           fi
         fi

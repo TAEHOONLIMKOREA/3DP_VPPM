@@ -6,7 +6,7 @@ GPU 불필요 — CPU/numpy/scipy/h5py 만 사용.
 
 ## 사전조건
 
-- `ORNL_Data_Origin/` 에 5개 빌드 HDF5 파일 존재
+- `ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/[baseline] (Peregrine v2023-11)/` 에 5개 빌드 HDF5 파일 존재
 - 호스트 `./venv` 빌드 완료 (h5py, numpy, scipy, tqdm 포함)
 - 산출물 디렉토리 자동 생성됨 (없어도 무방)
 

@@ -2,7 +2,8 @@
 시각화/설명용 샘플 데이터 추출 스크립트.
 
 B1.1 (기준 공정 조건) 빌드에서 중간 레이어 1개를 기준으로
-각 데이터 카테고리의 대표 샘플을 ORNL_Data_Open/sample_showcase/ 에 저장한다.
+각 데이터 카테고리의 대표 샘플을
+ORNL_Data/.../[baseline] (Peregrine v2023-11)_Open(Sample)/sample_showcase/ 에 저장한다.
 """
 
 from pathlib import Path
@@ -17,13 +18,14 @@ import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 import matplotlib.collections as collections
 
-PROJECT_ROOT = Path("/home/taehoon/3DP_TensileProp_Prediction")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from Sources.hdf5_parser.ornl_data_loader import ORNLDataLoader, DSCNN_CLASSES
 
-HDF5_PATH = PROJECT_ROOT / "ORNL_Data_Origin" / "2021-07-13 TCR Phase 1 Build 1.hdf5"
-OUT_DIR = PROJECT_ROOT / "ORNL_Data_Open" / "sample_showcase"
+ORNL_DATA_ROOT = PROJECT_ROOT / "ORNL_Data" / "Co-Registered In-Situ and Ex-Situ Dataset"
+HDF5_PATH = ORNL_DATA_ROOT / "[baseline] (Peregrine v2023-11)" / "2021-07-13 TCR Phase 1 Build 1.hdf5"
+OUT_DIR = ORNL_DATA_ROOT / "[baseline] (Peregrine v2023-11)_Open(Sample)" / "sample_showcase"
 PLOTS = OUT_DIR / "plots"
 RAW = OUT_DIR / "raw"
 PLOTS.mkdir(parents=True, exist_ok=True)

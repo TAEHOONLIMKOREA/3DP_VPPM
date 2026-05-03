@@ -405,7 +405,7 @@ run.py 가 config.LSTM_MAX_EPOCHS=20, EARLY_STOP_PATIENCE=10 으로 in-place 덮
 ```
 docker compose -f docker/lstm/docker-compose.yml up -d --build
 
-  → docker-compose.yml 이 ORNL_Data_Origin / pipeline_outputs / venv 를 bind mount
+  → docker-compose.yml 이 ORNL_Data / pipeline_outputs / venv 를 bind mount
   → entrypoint.sh:
        (a) 마운트 검증 + 쓰기 권한 검증
        (b) experiments/vppm_lstm/{cache,models,results,features} mkdir

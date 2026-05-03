@@ -13,7 +13,7 @@
 ## 데이터 파이프라인 전체 흐름
 
 ```
-ORNL_Data_Origin/  (5 빌드 HDF5, ~230GB)
+ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/[baseline] (Peregrine v2023-11)/  (5 빌드 HDF5, ~230GB)
     │
     ▼
 ┌──────────────────────────────────────────────────────────────────┐

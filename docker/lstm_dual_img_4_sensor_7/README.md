@@ -11,7 +11,7 @@ baseline 21-feat 에서 sensor 그룹 7개를 제거하고(14-feat) 대신 senso
 - `Sources/pipeline_outputs/features/all_features.npz` (baseline 피처)
 - `Sources/pipeline_outputs/experiments/vppm_lstm/cache/crop_stacks_B1.{1..5}.h5` (visible/0 캐시 — `docker/lstm` 으로 빌드)
 - `Sources/pipeline_outputs/experiments/vppm_lstm_dual/cache/crop_stacks_v1_B1.{1..5}.h5` (visible/1 캐시 — `docker/lstm_dual` 의 cache_v1 단계로 빌드)
-- `ORNL_Data_Origin/*.hdf5` (sensor 캐시 빌드 시 필요 — `--phase cache_sensor`)
+- `ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/[baseline] (Peregrine v2023-11)/*.hdf5` (sensor 캐시 빌드 시 필요 — `--phase cache_sensor`)
 
 사전조건 빠른 확인:
 
@@ -19,7 +19,7 @@ baseline 21-feat 에서 sensor 그룹 7개를 제거하고(14-feat) 대신 senso
 ls Sources/pipeline_outputs/features/all_features.npz
 ls Sources/pipeline_outputs/experiments/vppm_lstm/cache/crop_stacks_B1.*.h5
 ls Sources/pipeline_outputs/experiments/vppm_lstm_dual/cache/crop_stacks_v1_B1.*.h5
-ls ORNL_Data_Origin/*.hdf5 | wc -l   # 5개여야 함
+ls "ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/[baseline] (Peregrine v2023-11)/"*.hdf5 | wc -l   # 5개여야 함
 ```
 
 ## 실행

@@ -424,7 +424,7 @@ def main():
         description='Export ORNL L-PBF HDF5 data to human-readable formats'
     )
     parser.add_argument('--data-dir', type=str, default=None,
-                        help='Path to ORNL_Data_Origin directory')
+                        help='Path to ORNL_Data baseline (Peregrine v2023-11) directory')
     parser.add_argument('--output-dir', type=str, default=None,
                         help='Output directory for exported files')
     parser.add_argument('--build', type=str, default=None,
@@ -438,16 +438,18 @@ def main():
     args = parser.parse_args()
 
     # 데이터 디렉토리 설정
+    project_root = Path(__file__).parent.parent.parent
+    ornl_root = project_root / "ORNL_Data" / "Co-Registered In-Situ and Ex-Situ Dataset"
     if args.data_dir:
         data_dir = Path(args.data_dir)
     else:
-        data_dir = Path(__file__).parent.parent.parent / "ORNL_Data_Origin"
+        data_dir = ornl_root / "[baseline] (Peregrine v2023-11)"
 
-    # 출력 디렉토리 설정
+    # 출력 디렉토리 설정 — baseline _Open(Sample) 폴더에 사람이 읽을 수 있는 형식 저장
     if args.output_dir:
         output_base = Path(args.output_dir)
     else:
-        output_base = Path(__file__).parent.parent.parent / "ORNL_Data_Open"
+        output_base = ornl_root / "[baseline] (Peregrine v2023-11)_Open(Sample)"
 
     print(f"Data directory: {data_dir}")
     print(f"Output directory: {output_base}")

@@ -2,14 +2,14 @@
 #   visible/0 LSTM(d_embed=4) + visible/1 LSTM(d_embed=4) + sensor LSTM(d_embed=7) → MLP
 # cache_sensor → train → evaluate 순차 실행.
 # v0/v1 캐시는 lstm / lstm_dual 실험과 공유 (재추출 안 함).
-# sensor 캐시는 이 실험 고유 — ORNL_Data_Origin raw HDF5 에서 빌드.
+# sensor 캐시는 이 실험 고유 — ORNL_Data baseline (Peregrine v2023-11) raw HDF5 에서 빌드.
 # 산출물 → Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7/
 #
 # 사전조건:
 #   - Sources/pipeline_outputs/features/all_features.npz                       (baseline 피처)
 #   - Sources/pipeline_outputs/experiments/vppm_lstm/cache/                    (visible/0 캐시)
 #   - Sources/pipeline_outputs/experiments/vppm_lstm_dual/cache/               (visible/1 캐시)
-#   - ORNL_Data_Origin/*.hdf5                                                  (sensor 캐시 빌드용)
+#   - ORNL_Data/.../[baseline] (Peregrine v2023-11)/*.hdf5                     (sensor 캐시 빌드용)
 #   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7/      (rw, 미리 생성)
 #
 # 사용법:
@@ -51,7 +51,8 @@ services:
       # visible/1 캐시 (입력) - read-only
       - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual:ro
       # ORNL 원본 HDF5 (sensor 캐시 빌드용) - read-only
-      - ../../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
+      # ORNL_Data/ 전체를 마운트 → config.HDF5_DIR 가 [baseline] (Peregrine v2023-11) 서브폴더를 가리킴
+      - ../../ORNL_Data:/workspace/ORNL_Data:ro
       # 산출물 - rw
       - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7:rw
     shm_size: "4gb"

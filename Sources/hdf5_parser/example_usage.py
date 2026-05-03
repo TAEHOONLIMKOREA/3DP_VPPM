@@ -301,7 +301,7 @@ def example_visualization(loader: ORNLDataLoader, layer: int, save_dir: Path = N
 def main():
     parser = argparse.ArgumentParser(description='ORNL L-PBF Dataset Example Usage')
     parser.add_argument('--data-dir', type=str, default=None,
-                        help='Path to ORNL_Data_Origin directory')
+                        help='Path to ORNL_Data baseline (Peregrine v2023-11) directory')
     parser.add_argument('--build', type=str, default=None,
                         help='Build ID (e.g., B1.1, B1.2)')
     parser.add_argument('--layer', type=int, default=50,
@@ -316,7 +316,12 @@ def main():
     if args.data_dir:
         data_dir = Path(args.data_dir)
     else:
-        data_dir = Path(__file__).parent.parent.parent / "ORNL_Data_Origin"
+        data_dir = (
+            Path(__file__).parent.parent.parent
+            / "ORNL_Data"
+            / "Co-Registered In-Situ and Ex-Situ Dataset"
+            / "[baseline] (Peregrine v2023-11)"
+        )
 
     print(f"Data directory: {data_dir}")
 

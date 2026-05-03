@@ -8,7 +8,10 @@ from pathlib import Path
 # 경로
 # ============================================================
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-HDF5_DIR = PROJECT_ROOT / "ORNL_Data_Origin"
+ORNL_DATA_ROOT = PROJECT_ROOT / "ORNL_Data" / "Co-Registered In-Situ and Ex-Situ Dataset"
+HDF5_DIR = ORNL_DATA_ROOT / "[baseline] (Peregrine v2023-11)"
+HDF5_DIR_NEW_V1 = ORNL_DATA_ROOT / "[new_v1] (Peregrine v2023-09)"
+HDF5_DIR_NEW_V2 = ORNL_DATA_ROOT / "[new_v2] (Peregrine v2023-10)"
 OUTPUT_DIR = PROJECT_ROOT / "Sources" / "pipeline_outputs"
 FEATURES_DIR = OUTPUT_DIR / "features"
 MODELS_DIR = OUTPUT_DIR / "models"

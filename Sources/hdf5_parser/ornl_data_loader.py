@@ -559,8 +559,13 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         hdf5_path = sys.argv[1]
     else:
-        # 기본 경로 설정
-        default_dir = Path(__file__).parent.parent.parent / "ORNL_Data_Origin"
+        # 기본 경로 설정 — baseline (Peregrine v2023-11) 데이터셋
+        default_dir = (
+            Path(__file__).parent.parent.parent
+            / "ORNL_Data"
+            / "Co-Registered In-Situ and Ex-Situ Dataset"
+            / "[baseline] (Peregrine v2023-11)"
+        )
         hdf5_files = list(default_dir.glob("*.hdf5"))
         if hdf5_files:
             hdf5_path = hdf5_files[0]

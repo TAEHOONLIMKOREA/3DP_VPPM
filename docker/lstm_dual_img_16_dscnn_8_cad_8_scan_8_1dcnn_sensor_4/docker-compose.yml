@@ -5,7 +5,7 @@
 # v0/v1 캐시: lstm / lstm_dual 실험 공유.
 # sensor 캐시: lstm_dual_img_4_sensor_7 실험 공유.
 # dscnn 캐시: lstm_dual_img_4_sensor_7_dscnn_8 실험 공유.
-# cad_patch / scan_patch 캐시: 이 실험 고유 — ORNL_Data_Origin raw HDF5 에서 빌드.
+# cad_patch / scan_patch 캐시: 이 실험 고유 — ORNL_Data baseline (Peregrine v2023-11) raw HDF5 에서 빌드.
 # 산출물 → Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/
 #
 # 사전조건:
@@ -14,7 +14,7 @@
 #   - Sources/pipeline_outputs/experiments/vppm_lstm_dual/cache/crop_stacks_v1_B1.*.h5     (visible/1 캐시)
 #   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7/cache/sensor_stacks_B1.*.h5  (sensor 캐시)
 #   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8/cache/dscnn_stacks_B1.*.h5  (dscnn 캐시)
-#   - ORNL_Data_Origin/*.hdf5                                                                (cad/scan 캐시 빌드용)
+#   - ORNL_Data/.../[baseline] (Peregrine v2023-11)/*.hdf5                                   (cad/scan 캐시 빌드용)
 #   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/ (rw, 미리 생성)
 #
 # 사용법:
@@ -61,7 +61,8 @@ services:
       # dscnn 캐시 (입력) - read-only
       - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8:ro
       # ORNL 원본 HDF5 (cad/scan 캐시 빌드용) - read-only
-      - ../../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
+      # ORNL_Data/ 전체를 마운트 → config.HDF5_DIR 가 [baseline] (Peregrine v2023-11) 서브폴더를 가리킴
+      - ../../ORNL_Data:/workspace/ORNL_Data:ro
       # 산출물 - rw
       - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4:rw
     shm_size: "4gb"

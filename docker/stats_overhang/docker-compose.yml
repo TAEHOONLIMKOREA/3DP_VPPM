@@ -32,7 +32,8 @@ services:
       - /etc/group:/etc/group:ro
       - ../../venv:/workspace/venv:ro
       # 원본 HDF5 (5개 빌드, ~230GB) — read-only
-      - ../../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
+      # ORNL_Data/ 전체를 마운트 → config.HDF5_DIR 가 [baseline] (Peregrine v2023-11) 서브폴더를 가리킴
+      - ../../ORNL_Data:/workspace/ORNL_Data:ro
       # 산출물 — rw (per_build/ 포함)
       - ../../Sources/pipeline_outputs/figures/stats_overhang:/workspace/Sources/pipeline_outputs/figures/stats_overhang:rw
     shm_size: "4gb"
@@ -51,8 +52,9 @@ services:
         fi
 
         # HDF5 데이터 확인 (B1.1 기준)
-        if [ ! -f "/workspace/ORNL_Data_Origin/2021-07-13 TCR Phase 1 Build 1.hdf5" ]; then
-          echo "[stats_overhang] FATAL: ORNL_Data_Origin HDF5 파일 없음 — 마운트를 확인하세요" >&2
+        HDF5_DIR="/workspace/ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/[baseline] (Peregrine v2023-11)"
+        if [ ! -f "$$HDF5_DIR/2021-07-13 TCR Phase 1 Build 1.hdf5" ]; then
+          echo "[stats_overhang] FATAL: HDF5 파일 없음 ($$HDF5_DIR/) — 마운트를 확인하세요" >&2
           exit 1
         fi
 
