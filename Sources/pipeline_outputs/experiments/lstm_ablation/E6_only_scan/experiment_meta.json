@@ -1,0 +1,71 @@
+{
+  "model_class": "VPPM_LSTM_FullStack_Ablation",
+  "experiment_id": "E6",
+  "removed": [
+    "feat_static",
+    "branch_v0",
+    "branch_v1",
+    "branch_sensor",
+    "branch_dscnn",
+    "branch_cad"
+  ],
+  "kept": [
+    "branch_scan"
+  ],
+  "use_static": false,
+  "use_v0": false,
+  "use_v1": false,
+  "use_sensor": false,
+  "use_dscnn": false,
+  "use_cad": false,
+  "use_scan": true,
+  "base_model": "VPPM_LSTM_Dual_Img_16_DSCNN_8_CAD_8_Scan_8_1DCNN_Sensor_4",
+  "n_static_feats": 2,
+  "static_feat_idx": [
+    2,
+    18
+  ],
+  "static_feat_names": [
+    "build_height",
+    "laser_module"
+  ],
+  "n_total_feats": 8,
+  "branches": {
+    "camera_v0": null,
+    "camera_v1": null,
+    "sensor": null,
+    "dscnn": null,
+    "cad_patch": null,
+    "scan_patch": {
+      "type": "spatial_cnn_lstm",
+      "in_channels": 2,
+      "patch_h": 8,
+      "patch_w": 8,
+      "d_cnn": 32,
+      "d_hidden": 16,
+      "d_embed": 8,
+      "channel_names": [
+        "return_delay",
+        "stripe_boundaries"
+      ],
+      "inversion_applied": false,
+      "mask_applied": false,
+      "return_delay_saturation_s": 0.75
+    }
+  },
+  "mlp_hidden": [
+    256,
+    128,
+    64
+  ],
+  "T_max": 70,
+  "train": {
+    "lr": 0.001,
+    "batch_size": 256,
+    "max_epochs": 5000,
+    "early_stop_patience": 50,
+    "grad_clip": 1.0,
+    "weight_decay": 0.0,
+    "dropout": 0.1
+  }
+}

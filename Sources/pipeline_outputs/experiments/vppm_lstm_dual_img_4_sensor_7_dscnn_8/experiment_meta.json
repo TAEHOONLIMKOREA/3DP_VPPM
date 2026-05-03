@@ -1,0 +1,80 @@
+{
+  "model_class": "VPPM_LSTM_Dual_Img_4_Sensor_7_DSCNN_8",
+  "n_baseline_feats_kept": 6,
+  "n_sensor_feats_dropped": 7,
+  "n_dscnn_feats_dropped": 8,
+  "d_embed_v0": 4,
+  "d_embed_v1": 4,
+  "d_embed_s": 7,
+  "d_embed_d": 8,
+  "d_hidden_d": 16,
+  "n_dscnn_channels": 8,
+  "n_total_feats": 29,
+  "T_max": 70,
+  "crop_h": 8,
+  "crop_w": 8,
+  "camera_channels": [
+    0,
+    1
+  ],
+  "sensor_channels": [
+    "layer_times",
+    "top_flow_rate",
+    "bottom_flow_rate",
+    "module_oxygen",
+    "build_plate_temperature",
+    "bottom_flow_temperature",
+    "actual_ventilator_flow_rate"
+  ],
+  "dscnn_channels": [
+    "Powder",
+    "Printed",
+    "Recoater Streaking",
+    "Edge Swelling",
+    "Debris",
+    "Super-Elevation",
+    "Soot",
+    "Excessive Melting"
+  ],
+  "dscnn_class_ids": [
+    0,
+    1,
+    3,
+    5,
+    6,
+    7,
+    8,
+    10
+  ],
+  "share_cnn": false,
+  "share_lstm": false,
+  "cnn": {
+    "ch1": 16,
+    "ch2": 32,
+    "kernel": 3,
+    "d_cnn": 32
+  },
+  "lstm_camera": {
+    "d_hidden": 16,
+    "num_layers": 1,
+    "bidirectional": false
+  },
+  "lstm_sensor": {
+    "d_hidden": 16,
+    "num_layers": 1,
+    "bidirectional": false
+  },
+  "lstm_dscnn": {
+    "d_hidden": 16,
+    "num_layers": 1,
+    "bidirectional": false
+  },
+  "train": {
+    "lr": 0.001,
+    "batch_size": 256,
+    "max_epochs": 5000,
+    "early_stop_patience": 50,
+    "grad_clip": 1.0,
+    "weight_decay": 0.0
+  }
+}

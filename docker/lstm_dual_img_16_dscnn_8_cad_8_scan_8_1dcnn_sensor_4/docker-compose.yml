@@ -1,0 +1,124 @@
+# VPPM-LSTM-Dual-Img-16-DSCNN-8-CAD-8-Scan-8-1DCNN-Sensor-4 학습 —
+#   7-stream 모델: visible/0(d=16) + visible/1(d=16) + sensor 1D-CNN(4 fields) +
+#                  dscnn(d=8) + cad_patch(d=8) + scan_patch(d=8) → MLP 86
+# cache_cad_patch → cache_scan_patch → train → evaluate 순차 실행 (--all).
+# v0/v1 캐시: lstm / lstm_dual 실험 공유.
+# sensor 캐시: lstm_dual_img_4_sensor_7 실험 공유.
+# dscnn 캐시: lstm_dual_img_4_sensor_7_dscnn_8 실험 공유.
+# cad_patch / scan_patch 캐시: 이 실험 고유 — ORNL_Data_Origin raw HDF5 에서 빌드.
+# 산출물 → Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/
+#
+# 사전조건:
+#   - Sources/pipeline_outputs/features/all_features.npz                                     (baseline 피처)
+#   - Sources/pipeline_outputs/experiments/vppm_lstm/cache/crop_stacks_B1.*.h5              (visible/0 캐시)
+#   - Sources/pipeline_outputs/experiments/vppm_lstm_dual/cache/crop_stacks_v1_B1.*.h5     (visible/1 캐시)
+#   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7/cache/sensor_stacks_B1.*.h5  (sensor 캐시)
+#   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8/cache/dscnn_stacks_B1.*.h5  (dscnn 캐시)
+#   - ORNL_Data_Origin/*.hdf5                                                                (cad/scan 캐시 빌드용)
+#   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/ (rw, 미리 생성)
+#
+# 사용법:
+#
+#   cd docker/lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4
+#   docker compose up -d --build       # 백그라운드 실행 (SSH 끊겨도 계속됨)
+#   docker compose logs -f             # 로그 실시간 확인
+#   docker compose down                # 끝났거나 중단하고 싶을 때 정리
+#
+# 단계/GPU 변경:
+#   NVIDIA_VISIBLE_DEVICES=2 docker compose up -d --build
+#   LSTM_FULL86_PHASE=cache_cad_patch docker compose up -d --build
+#   LSTM_FULL86_PHASE=cache_scan_patch docker compose up -d --build
+#   LSTM_FULL86_PHASE=train docker compose up -d --build
+#   LSTM_FULL86_PHASE=evaluate docker compose up -d --build
+#   LSTM_FULL86_EXTRA=--quick docker compose up -d --build
+services:
+  vppm-lstm-full86:
+    build:
+      context: ../..
+      dockerfile: docker/lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/Dockerfile
+    image: vppm-lstm-full86:gpu
+    runtime: nvidia
+    user: "${UID_GID:-1000:1000}"
+    restart: "no"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+      - LSTM_FULL86_PHASE=${LSTM_FULL86_PHASE:-all}            # all | cache_cad_patch | cache_scan_patch | train | evaluate
+      - LSTM_FULL86_EXTRA=${LSTM_FULL86_EXTRA:-}               # e.g. "--quick"
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ../../venv:/workspace/venv:ro
+      # baseline features (입력) - read-only
+      - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
+      # visible/0 캐시 (입력) - read-only
+      - ../../Sources/pipeline_outputs/experiments/vppm_lstm:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm:ro
+      # visible/1 캐시 (입력) - read-only
+      - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual:ro
+      # sensor 캐시 (입력) - read-only
+      - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7:ro
+      # dscnn 캐시 (입력) - read-only
+      - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8:ro
+      # ORNL 원본 HDF5 (cad/scan 캐시 빌드용) - read-only
+      - ../../ORNL_Data_Origin:/workspace/ORNL_Data_Origin:ro
+      # 산출물 - rw
+      - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4:rw
+    shm_size: "4gb"
+    working_dir: /workspace
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        VENV_PY=/workspace/venv/bin/python
+        EXP=lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4
+        # ── 사전 검증 ──────────────────────────────────────────────────
+        if [ ! -x "$$VENV_PY" ]; then
+          echo "[$$EXP] FATAL: $$VENV_PY 없음 — 호스트 venv 가 마운트되지 않았습니다" >&2
+          exit 1
+        fi
+        if [ ! -f /workspace/Sources/pipeline_outputs/features/all_features.npz ]; then
+          echo "[$$EXP] FATAL: all_features.npz 없음 — baseline 피처 추출 먼저 완료해야 합니다" >&2
+          exit 1
+        fi
+        V0_CACHE=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm/cache
+        if [ ! -d "$$V0_CACHE" ] || [ -z "$$(ls -A $$V0_CACHE/crop_stacks_B1.*.h5 2>/dev/null)" ]; then
+          echo "[$$EXP] FATAL: visible/0 캐시 없음 ($$V0_CACHE) — 먼저 docker/lstm 으로 cache 단계 실행하세요" >&2
+          exit 1
+        fi
+        V1_CACHE=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual/cache
+        if [ ! -d "$$V1_CACHE" ] || [ -z "$$(ls -A $$V1_CACHE/crop_stacks_v1_B1.*.h5 2>/dev/null)" ]; then
+          echo "[$$EXP] FATAL: visible/1 캐시 없음 ($$V1_CACHE) — 먼저 docker/lstm_dual 로 cache_v1 단계 실행하세요" >&2
+          exit 1
+        fi
+        SENSOR_CACHE=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7/cache
+        if [ ! -d "$$SENSOR_CACHE" ] || [ -z "$$(ls -A $$SENSOR_CACHE/sensor_stacks_B1.*.h5 2>/dev/null)" ]; then
+          echo "[$$EXP] FATAL: sensor 캐시 없음 ($$SENSOR_CACHE) — 먼저 docker/lstm_dual_img_4_sensor_7 로 cache_sensor 단계 실행하세요" >&2
+          exit 1
+        fi
+        DSCNN_CACHE=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8/cache
+        if [ ! -d "$$DSCNN_CACHE" ] || [ -z "$$(ls -A $$DSCNN_CACHE/dscnn_stacks_B1.*.h5 2>/dev/null)" ]; then
+          echo "[$$EXP] FATAL: dscnn 캐시 없음 ($$DSCNN_CACHE) — 먼저 docker/lstm_dual_img_4_sensor_7_dscnn_8 로 cache_dscnn 단계 실행하세요" >&2
+          exit 1
+        fi
+        OUT=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4
+        if [ ! -d "$$OUT" ]; then
+          echo "[$$EXP] FATAL: $$OUT 가 마운트되지 않음 (rw 필요)" >&2
+          exit 1
+        fi
+        if ! touch "$$OUT/.write_test" 2>/dev/null; then
+          echo "[$$EXP] FATAL: $$OUT 쓰기 실패 — UID/권한 확인" >&2
+          exit 1
+        fi
+        rm -f "$$OUT/.write_test"
+        mkdir -p "$$OUT/cache" "$$OUT/models" "$$OUT/results" "$$OUT/features"
+        $$VENV_PY -c "import torch,sys;print(f'[$$EXP] python={sys.version.split()[0]} torch={torch.__version__} cuda={torch.cuda.is_available()} devs={torch.cuda.device_count()}')"
+        # ── 실행 ──────────────────────────────────────────────────────
+        echo "[$$EXP] phase=$${LSTM_FULL86_PHASE} extra=$${LSTM_FULL86_EXTRA}"
+        if [ "$${LSTM_FULL86_PHASE}" = "all" ]; then
+          $$VENV_PY -m Sources.vppm.lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4.run --all $${LSTM_FULL86_EXTRA}
+        else
+          $$VENV_PY -m Sources.vppm.lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4.run --phase $${LSTM_FULL86_PHASE} $${LSTM_FULL86_EXTRA}
+        fi
+        echo "[$$EXP] Done. Results → Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/results/"

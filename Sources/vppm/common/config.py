@@ -279,3 +279,101 @@ LSTM_DUAL_IMG_4_SENSOR_7_FEATURES_DIR = LSTM_DUAL_IMG_4_SENSOR_7_EXPERIMENT_DIR 
 # 카메라 캐시는 lstm/lstm_dual 과 공유
 LSTM_DUAL_IMG_4_SENSOR_7_CACHE_V0_DIR = LSTM_CACHE_DIR
 LSTM_DUAL_IMG_4_SENSOR_7_CACHE_V1_DIR = LSTM_DUAL_CACHE_DIR
+
+# ============================================================
+# VPPM-LSTM-Dual-Img-4-Sensor-7-DSCNN-8 (Sources/vppm/lstm_dual_img_4_sensor_7_dscnn_8/PLAN.md)
+# ============================================================
+# 카메라 v0/v1 LSTM(d_embed=4) + sensor LSTM(d_embed=7) + DSCNN LSTM(d_embed=8) 4-분기.
+# G1(DSCNN 8-feat 가중평균) + G2(센서 7-feat 평균) 둘 다 제거 → 6-feat baseline (G3+G4)
+# → MLP 입력 6 + 4 + 4 + 7 + 8 = 29 (sensor_7 / dual_4 와 동일).
+
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_N_CHANNELS = len(DSCNN_FEATURE_MAP)   # = 8
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_D_HIDDEN_D = 16                       # DSCNN LSTM hidden
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_D_EMBED_D = 8                         # DSCNN proj 출력
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_NUM_LAYERS = 1
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_BIDIRECTIONAL = False
+
+# 산출물 경로
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_EXPERIMENT_DIR = OUTPUT_DIR / "experiments" / "vppm_lstm_dual_img_4_sensor_7_dscnn_8"
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_CACHE_DIR    = LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_EXPERIMENT_DIR / "cache"
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_MODELS_DIR   = LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_EXPERIMENT_DIR / "models"
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_RESULTS_DIR  = LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_EXPERIMENT_DIR / "results"
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_FEATURES_DIR = LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_EXPERIMENT_DIR / "features"
+# 카메라 캐시는 lstm/lstm_dual 과 공유, sensor 캐시는 sensor_7 디렉터리 재사용
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_CACHE_V0_DIR     = LSTM_CACHE_DIR
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_CACHE_V1_DIR     = LSTM_DUAL_CACHE_DIR
+LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_CACHE_SENSOR_DIR = LSTM_DUAL_IMG_4_SENSOR_7_CACHE_DIR
+
+# ============================================================
+# VPPM-LSTM-Dual-Img-16-DSCNN-8-CAD-8-Scan-8-1DCNN-Sensor-4
+# (Sources/vppm/lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/PLAN.md)
+# 짧은 별칭 prefix: LSTM_FULL86_  (정식 이름이 너무 길어서 86-feat MLP 입력 차원 기반)
+# ============================================================
+# 카메라 v0/v1 — d_embed 16 (dscnn_8 의 4 보다 4× 확장)
+LSTM_FULL86_D_HIDDEN_CAM = 16
+LSTM_FULL86_D_EMBED_V0   = 16
+LSTM_FULL86_D_EMBED_V1   = 16
+
+# Sensor — 필드별 1D-CNN, 필드당 4-dim (sensor_7 의 7-ch LSTM 과 표현력 4×)
+LSTM_FULL86_N_SENSOR_FIELDS    = len(TEMPORAL_FEATURES)            # = 7
+LSTM_FULL86_D_PER_SENSOR_FIELD = 4
+LSTM_FULL86_SENSOR_HIDDEN_CH   = 16
+LSTM_FULL86_SENSOR_KERNEL      = 5
+
+# DSCNN — 8-ch LSTM (dscnn_8 와 동일)
+LSTM_FULL86_N_DSCNN_CH = len(DSCNN_FEATURE_MAP)                    # = 8
+LSTM_FULL86_D_HIDDEN_D = 16
+LSTM_FULL86_D_EMBED_D  = 8
+
+# CAD — spatial-CNN+LSTM, 8×8 패치 보존 (in_channels=2)
+# 채널 0 = edge_proximity (mm, inversion + cad_mask 픽셀곱), 채널 1 = overhang_proximity (layers, 동일)
+LSTM_FULL86_N_CAD_CH      = 2
+LSTM_FULL86_CAD_PATCH_H   = LSTM_CROP_H                            # = 8 (카메라와 동일)
+LSTM_FULL86_CAD_PATCH_W   = LSTM_CROP_W
+LSTM_FULL86_D_CNN_C       = 32                                     # cad spatial CNN proj 출력
+LSTM_FULL86_D_HIDDEN_C    = 16
+LSTM_FULL86_D_EMBED_C     = 8                                      # 채널당 4-dim
+LSTM_FULL86_CAD_INVERSION_APPLIED = True                           # 3.0 - dist / 71 - dist
+LSTM_FULL86_CAD_MASK_APPLIED      = True                           # cad_mask 픽셀곱
+
+# Scan — spatial-CNN+LSTM, 8×8 패치 보존 (in_channels=2)
+# 채널 0 = return_delay (s, raw + NaN→0), 채널 1 = stripe_boundaries (a.u., raw)
+LSTM_FULL86_N_SCAN_CH     = 2
+LSTM_FULL86_SCAN_PATCH_H  = LSTM_CROP_H                            # = 8
+LSTM_FULL86_SCAN_PATCH_W  = LSTM_CROP_W
+LSTM_FULL86_D_CNN_SC      = 32
+LSTM_FULL86_D_HIDDEN_SC   = 16
+LSTM_FULL86_D_EMBED_SC    = 8
+LSTM_FULL86_SCAN_INVERSION_APPLIED = False                         # raw 그대로 (이미 0=nominal)
+LSTM_FULL86_SCAN_MASK_APPLIED      = False                         # baseline 처리가 미용융=0 부여
+
+# 정적 피처 (P4) — 21-feat 에서 추출
+LSTM_FULL86_STATIC_IDX = [2, 18]                                   # build_height, laser_module
+
+# 결합 MLP — 86 → 256 → 128 → 64 → 1 (4 fc layer, baseline 의 1-layer 보다 깊음)
+LSTM_FULL86_MLP_HIDDEN = (256, 128, 64)
+
+# 산출물 경로
+LSTM_FULL86_EXPERIMENT_DIR = OUTPUT_DIR / "experiments" / "vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4"
+LSTM_FULL86_CACHE_DIR      = LSTM_FULL86_EXPERIMENT_DIR / "cache"
+LSTM_FULL86_MODELS_DIR     = LSTM_FULL86_EXPERIMENT_DIR / "models"
+LSTM_FULL86_RESULTS_DIR    = LSTM_FULL86_EXPERIMENT_DIR / "results"
+LSTM_FULL86_FEATURES_DIR   = LSTM_FULL86_EXPERIMENT_DIR / "features"
+
+# 카메라 / sensor / dscnn 캐시는 기존 디렉터리 재사용
+LSTM_FULL86_CACHE_V0_DIR     = LSTM_CACHE_DIR
+LSTM_FULL86_CACHE_V1_DIR     = LSTM_DUAL_CACHE_DIR
+LSTM_FULL86_CACHE_SENSOR_DIR = LSTM_DUAL_IMG_4_SENSOR_7_CACHE_DIR
+LSTM_FULL86_CACHE_DSCNN_DIR  = LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_CACHE_DIR
+# cad_patch / scan_patch 는 본 실험 디렉터리에 신규 빌드
+LSTM_FULL86_CACHE_CAD_DIR    = LSTM_FULL86_CACHE_DIR
+LSTM_FULL86_CACHE_SCAN_DIR   = LSTM_FULL86_CACHE_DIR
+
+# ============================================================
+# LSTM Ablation (Sources/vppm/lstm_ablation/PLAN.md)
+# 풀-스택 LSTM 의 카메라 분기 ablation 산출물 디렉터리.
+# 캐시는 LSTM_FULL86_* 를 그대로 재사용.
+# ============================================================
+LSTM_ABLATION_EXPERIMENT_BASE_DIR = OUTPUT_DIR / "experiments" / "lstm_ablation"
+LSTM_ABLATION_E1_DIR              = LSTM_ABLATION_EXPERIMENT_BASE_DIR / "E1_no_v0"
+LSTM_ABLATION_E2_DIR              = LSTM_ABLATION_EXPERIMENT_BASE_DIR / "E2_no_cameras"

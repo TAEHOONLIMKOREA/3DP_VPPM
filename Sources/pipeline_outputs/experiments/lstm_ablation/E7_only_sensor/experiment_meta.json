@@ -1,0 +1,71 @@
+{
+  "model_class": "VPPM_LSTM_FullStack_Ablation",
+  "experiment_id": "E7",
+  "removed": [
+    "feat_static",
+    "branch_v0",
+    "branch_v1",
+    "branch_dscnn",
+    "branch_cad",
+    "branch_scan"
+  ],
+  "kept": [
+    "branch_sensor"
+  ],
+  "use_static": false,
+  "use_v0": false,
+  "use_v1": false,
+  "use_sensor": true,
+  "use_dscnn": false,
+  "use_cad": false,
+  "use_scan": false,
+  "base_model": "VPPM_LSTM_Dual_Img_16_DSCNN_8_CAD_8_Scan_8_1DCNN_Sensor_4",
+  "n_static_feats": 2,
+  "static_feat_idx": [
+    2,
+    18
+  ],
+  "static_feat_names": [
+    "build_height",
+    "laser_module"
+  ],
+  "n_total_feats": 28,
+  "branches": {
+    "camera_v0": null,
+    "camera_v1": null,
+    "sensor": {
+      "type": "per_field_1dcnn",
+      "n_fields": 7,
+      "d_per_field": 4,
+      "hidden_ch": 16,
+      "kernel": 5,
+      "field_names": [
+        "layer_times",
+        "top_flow_rate",
+        "bottom_flow_rate",
+        "module_oxygen",
+        "build_plate_temperature",
+        "bottom_flow_temperature",
+        "actual_ventilator_flow_rate"
+      ]
+    },
+    "dscnn": null,
+    "cad_patch": null,
+    "scan_patch": null
+  },
+  "mlp_hidden": [
+    256,
+    128,
+    64
+  ],
+  "T_max": 70,
+  "train": {
+    "lr": 0.001,
+    "batch_size": 256,
+    "max_epochs": 5000,
+    "early_stop_patience": 50,
+    "grad_clip": 1.0,
+    "weight_decay": 0.0,
+    "dropout": 0.1
+  }
+}

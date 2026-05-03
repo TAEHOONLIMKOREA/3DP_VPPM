@@ -1,0 +1,22 @@
+{
+  "YS": {
+    "vppm_rmse": "31.3 +/- 0.3",
+    "naive_rmse": "33.9",
+    "reduction_pct": "8%"
+  },
+  "UTS": {
+    "vppm_rmse": "64.8 +/- 1.8",
+    "naive_rmse": "68.4",
+    "reduction_pct": "5%"
+  },
+  "UE": {
+    "vppm_rmse": "13.1 +/- 0.7",
+    "naive_rmse": "15.0",
+    "reduction_pct": "13%"
+  },
+  "TE": {
+    "vppm_rmse": "16.1 +/- 0.5",
+    "naive_rmse": "18.5",
+    "reduction_pct": "13%"
+  }
+}

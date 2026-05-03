@@ -1,0 +1,177 @@
+"""Phase S4 — VPPM-LSTM-Dual-Img-4-Sensor-7-DSCNN-8 학습 (4 properties × 5 folds = 20 모델).
+
+`lstm_dual_img_4_sensor_7/train.py` 와 동일 골격. 차이는 (1) 모델 클래스
+`VPPM_LSTM_Dual_Img_4_Sensor_7_DSCNN_8`, (2) forward 입력에 dscnn 추가 (6-tuple),
+(3) 저장 prefix `vppm_lstm_dual_img_4_sensor_7_dscnn_8`.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+
+from ..baseline.train import EarlyStopper
+from ..common import config
+from ..common.dataset import create_cv_splits
+from .dataset import VPPMLSTMPentDataset, collate_fn
+from .model import VPPM_LSTM_Dual_Img_4_Sensor_7_DSCNN_8
+
+
+def train_single_fold(
+    feat_train: np.ndarray, sv0_train: np.ndarray, sv1_train: np.ndarray,
+    sn_train: np.ndarray, dn_train: np.ndarray,
+    lengths_train: np.ndarray, targets_train: np.ndarray,
+    feat_val: np.ndarray, sv0_val: np.ndarray, sv1_val: np.ndarray,
+    sn_val: np.ndarray, dn_val: np.ndarray,
+    lengths_val: np.ndarray, targets_val: np.ndarray,
+    device: str = "cpu",
+    grad_clip: float = config.LSTM_GRAD_CLIP,
+) -> dict:
+    train_ds = VPPMLSTMPentDataset(
+        feat_train, sv0_train, sv1_train, sn_train, dn_train, lengths_train, targets_train,
+    )
+    val_ds = VPPMLSTMPentDataset(
+        feat_val, sv0_val, sv1_val, sn_val, dn_val, lengths_val, targets_val,
+    )
+    train_loader = DataLoader(
+        train_ds, batch_size=config.LSTM_BATCH_SIZE, shuffle=True,
+        collate_fn=collate_fn, num_workers=config.LSTM_NUM_WORKERS,
+    )
+    val_loader = DataLoader(
+        val_ds, batch_size=config.LSTM_BATCH_SIZE, shuffle=False,
+        collate_fn=collate_fn, num_workers=config.LSTM_NUM_WORKERS,
+    )
+
+    model = VPPM_LSTM_Dual_Img_4_Sensor_7_DSCNN_8().to(device)
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=config.LSTM_LR,
+        betas=config.ADAM_BETAS,
+        eps=config.ADAM_EPS,
+        weight_decay=config.LSTM_WEIGHT_DECAY,
+    )
+    criterion = nn.L1Loss()
+    stopper = EarlyStopper(patience=config.LSTM_EARLY_STOP_PATIENCE)
+
+    history = {"train_loss": [], "val_loss": []}
+
+    for epoch in range(config.LSTM_MAX_EPOCHS):
+        model.train()
+        train_losses = []
+        for feats, sv0, sv1, sn, dn, lengths, ys in train_loader:
+            feats = feats.to(device, non_blocking=True)
+            sv0 = sv0.to(device, non_blocking=True)
+            sv1 = sv1.to(device, non_blocking=True)
+            sn = sn.to(device, non_blocking=True)
+            dn = dn.to(device, non_blocking=True)
+            ys = ys.to(device, non_blocking=True)
+            # lengths 는 cpu 유지 (pack_padded_sequence 요구사항)
+
+            optimizer.zero_grad()
+            pred = model(feats, sv0, sv1, sn, dn, lengths)
+            loss = criterion(pred, ys)
+            loss.backward()
+            if grad_clip is not None and grad_clip > 0:
+                nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+            optimizer.step()
+            train_losses.append(loss.item())
+
+        model.eval()
+        val_loss_sum = 0.0
+        val_n = 0
+        with torch.no_grad():
+            for feats, sv0, sv1, sn, dn, lengths, ys in val_loader:
+                feats = feats.to(device, non_blocking=True)
+                sv0 = sv0.to(device, non_blocking=True)
+                sv1 = sv1.to(device, non_blocking=True)
+                sn = sn.to(device, non_blocking=True)
+                dn = dn.to(device, non_blocking=True)
+                ys = ys.to(device, non_blocking=True)
+                pred = model(feats, sv0, sv1, sn, dn, lengths)
+                loss = criterion(pred, ys)
+                val_loss_sum += loss.item() * len(ys)
+                val_n += len(ys)
+
+        train_loss = float(np.mean(train_losses))
+        val_loss = val_loss_sum / max(val_n, 1)
+        history["train_loss"].append(train_loss)
+        history["val_loss"].append(val_loss)
+
+        if stopper.check(val_loss, model):
+            break
+
+    if stopper.best_state is not None:
+        model.load_state_dict(stopper.best_state)
+
+    return {
+        "model_state": model.state_dict(),
+        "history": history,
+        "best_val_loss": stopper.best_score,
+        "epochs": len(history["train_loss"]),
+    }
+
+
+MODEL_FILE_PREFIX = "vppm_lstm_dual_img_4_sensor_7_dscnn_8"
+
+
+def train_all(dataset: dict,
+              output_dir: Path = config.LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_MODELS_DIR,
+              device: str = "cpu") -> dict:
+    """4 properties × 5 fold 학습. 모델 저장 → output_dir/{prefix}_{short}_fold{k}.pt."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    feats = dataset["features"]
+    sv0 = dataset["stacks_v0"]
+    sv1 = dataset["stacks_v1"]
+    sn = dataset["sensors"]
+    dn = dataset["dscnn"]
+    lengths = dataset["lengths"]
+    sids = dataset["sample_ids"]
+    splits = create_cv_splits(sids)
+
+    all_results = {}
+    for prop in config.TARGET_PROPERTIES:
+        short = config.TARGET_SHORT[prop]
+        if prop not in dataset["targets"]:
+            print(f"  skip {short}: no target")
+            continue
+        targets = dataset["targets"][prop]
+
+        print(f"\n{'='*60}\nTraining {MODEL_FILE_PREFIX} for {short}\n{'='*60}")
+        fold_results = []
+        for fold, (train_mask, val_mask) in enumerate(splits):
+            print(f"  Fold {fold+1}/{config.N_FOLDS}...")
+            result = train_single_fold(
+                feats[train_mask], sv0[train_mask], sv1[train_mask],
+                sn[train_mask], dn[train_mask],
+                lengths[train_mask], targets[train_mask],
+                feats[val_mask], sv0[val_mask], sv1[val_mask],
+                sn[val_mask], dn[val_mask],
+                lengths[val_mask], targets[val_mask],
+                device=device,
+            )
+            fold_results.append(result)
+
+            model_path = output_dir / f"{MODEL_FILE_PREFIX}_{short}_fold{fold}.pt"
+            torch.save(result["model_state"], model_path)
+            print(f"    epochs={result['epochs']}  best_val={result['best_val_loss']:.6f}")
+
+        all_results[prop] = fold_results
+
+    log = {}
+    for prop, results in all_results.items():
+        short = config.TARGET_SHORT[prop]
+        log[short] = {
+            "fold_val_losses": [r["best_val_loss"] for r in results],
+            "fold_epochs": [r["epochs"] for r in results],
+        }
+    with open(output_dir / "training_log.json", "w") as f:
+        json.dump(log, f, indent=2)
+
+    print(f"\nTraining complete → {output_dir}")
+    return all_results
