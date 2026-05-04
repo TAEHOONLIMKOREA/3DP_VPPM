@@ -174,6 +174,14 @@ FEATURE_GROUPS_SCAN_SUB = {
 }
 FEATURE_GROUPS.update(FEATURE_GROUPS_SCAN_SUB)
 
+# CAD(G3) 서브 ablation (PLAN_cad_subablation.md) — 개별 3채널
+FEATURE_GROUPS_CAD_SUB = {
+    "cad_distance_edge":     [0],   # E34
+    "cad_distance_overhang": [1],   # E35
+    "cad_build_height":      [2],   # E36
+}
+FEATURE_GROUPS.update(FEATURE_GROUPS_CAD_SUB)
+
 # ============================================================
 # VPPM-LSTM 확장 (Sources/vppm/lstm/PLAN.md)
 # ============================================================
@@ -371,6 +379,62 @@ LSTM_FULL86_CACHE_DSCNN_DIR  = LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_CACHE_DIR
 # cad_patch / scan_patch 는 본 실험 디렉터리에 신규 빌드
 LSTM_FULL86_CACHE_CAD_DIR    = LSTM_FULL86_CACHE_DIR
 LSTM_FULL86_CACHE_SCAN_DIR   = LSTM_FULL86_CACHE_DIR
+
+# ============================================================
+# VPPM-LSTM-Dual-Img-16-DSCNN-8-CAD-8-Scan-8-Sensor-1
+# (Sources/vppm/lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1/PLAN.md)
+# 짧은 별칭 prefix: LSTM_FULL59_  (MLP 입력 차원 = 59)
+# fullstack(LSTM_FULL86_) 과 거의 동일. sensor 분기만 per-field 1D-CNN(28) → 단일 multi-ch LSTM(d=1)
+# ============================================================
+LSTM_FULL59_D_HIDDEN_CAM = 16
+LSTM_FULL59_D_EMBED_V0   = 16
+LSTM_FULL59_D_EMBED_V1   = 16
+
+# Sensor — 단일 multi-channel LSTM (★ fullstack 의 per-field 1D-CNN 대체)
+LSTM_FULL59_N_SENSOR_CH = len(TEMPORAL_FEATURES)                   # = 7
+LSTM_FULL59_D_HIDDEN_S  = 16                                       # sensor LSTM hidden
+LSTM_FULL59_D_EMBED_S   = 1                                        # sensor proj 출력 (★ 변경: 28 → 1)
+LSTM_FULL59_NUM_LAYERS_S    = 1
+LSTM_FULL59_BIDIRECTIONAL_S = False
+
+LSTM_FULL59_N_DSCNN_CH = len(DSCNN_FEATURE_MAP)                    # = 8
+LSTM_FULL59_D_HIDDEN_D = 16
+LSTM_FULL59_D_EMBED_D  = 8
+
+LSTM_FULL59_N_CAD_CH      = 2
+LSTM_FULL59_CAD_PATCH_H   = LSTM_CROP_H                            # = 8
+LSTM_FULL59_CAD_PATCH_W   = LSTM_CROP_W
+LSTM_FULL59_D_CNN_C       = 32
+LSTM_FULL59_D_HIDDEN_C    = 16
+LSTM_FULL59_D_EMBED_C     = 8
+
+LSTM_FULL59_N_SCAN_CH     = 2
+LSTM_FULL59_SCAN_PATCH_H  = LSTM_CROP_H                            # = 8
+LSTM_FULL59_SCAN_PATCH_W  = LSTM_CROP_W
+LSTM_FULL59_D_CNN_SC      = 32
+LSTM_FULL59_D_HIDDEN_SC   = 16
+LSTM_FULL59_D_EMBED_SC    = 8
+
+# 정적 피처 (P4) — 21-feat 에서 추출
+LSTM_FULL59_STATIC_IDX = [2, 18]                                   # build_height, laser_module
+
+# 결합 MLP — 59 → 256 → 128 → 64 → 1 (fullstack 와 동일 구조, fc1 입력만 86→59)
+LSTM_FULL59_MLP_HIDDEN = (256, 128, 64)
+
+# 산출물 경로
+LSTM_FULL59_EXPERIMENT_DIR = OUTPUT_DIR / "experiments" / "vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1"
+LSTM_FULL59_CACHE_DIR      = LSTM_FULL59_EXPERIMENT_DIR / "cache"
+LSTM_FULL59_MODELS_DIR     = LSTM_FULL59_EXPERIMENT_DIR / "models"
+LSTM_FULL59_RESULTS_DIR    = LSTM_FULL59_EXPERIMENT_DIR / "results"
+LSTM_FULL59_FEATURES_DIR   = LSTM_FULL59_EXPERIMENT_DIR / "features"
+
+# 모든 캐시는 기존 디렉터리 재사용 — 신규 빌드 없음
+LSTM_FULL59_CACHE_V0_DIR     = LSTM_CACHE_DIR
+LSTM_FULL59_CACHE_V1_DIR     = LSTM_DUAL_CACHE_DIR
+LSTM_FULL59_CACHE_SENSOR_DIR = LSTM_DUAL_IMG_4_SENSOR_7_CACHE_DIR
+LSTM_FULL59_CACHE_DSCNN_DIR  = LSTM_DUAL_IMG_4_SENSOR_7_DSCNN_8_CACHE_DIR
+LSTM_FULL59_CACHE_CAD_DIR    = LSTM_FULL86_CACHE_CAD_DIR           # fullstack 의 cad_patch 캐시 재사용
+LSTM_FULL59_CACHE_SCAN_DIR   = LSTM_FULL86_CACHE_SCAN_DIR          # fullstack 의 scan_patch 캐시 재사용
 
 # ============================================================
 # LSTM Ablation (Sources/vppm/lstm_ablation/PLAN.md)

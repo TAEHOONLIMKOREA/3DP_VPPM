@@ -78,6 +78,10 @@ EXPERIMENTS = {
     "E31": ("scan",                   "No-Scan (재실행) — G4 3 피처 제거"),
     "E32": ("scan_return_delay",      "No-ReturnDelay — laser_return_delay 단독 제거"),
     "E33": ("scan_stripe_boundaries", "No-StripeBoundary — laser_stripe_boundaries 단독 제거"),
+    # --- CAD(G3) 서브 채널 ablation ---
+    "E34": ("cad_distance_edge",     "No-DistEdge — distance_from_edge 단독 제거"),
+    "E35": ("cad_distance_overhang", "No-DistOverhang — distance_from_overhang 단독 제거"),
+    "E36": ("cad_build_height",      "No-BuildHeight — build_height 단독 제거"),
 }
 
 

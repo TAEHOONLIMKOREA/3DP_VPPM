@@ -1,204 +1,174 @@
-# VPPM-1DCNN 구현 계획
+# VPPM-1DCNN 실험 계획
 
-> **핵심 아이디어**: baseline의 21개 supervoxel 피처는 레이어 축으로 **평균/가중평균**되어 z-방향 변동 정보가 사라진다. 레이어별 raw 피처 시퀀스 `(70, 21)` 을 그대로 두고 **1D CNN으로 인코딩** 하여, 레이어 간 패턴(연속 결함, 점진적 변화, 국소 이상)을 학습한다.
+> **한 줄 요약**: baseline (21-feat MLP) 의 **z-축 평균 압축**을 **채널별 1D CNN** 으로 교체한다. 출력은 여전히 SV 당 21차원이고, 그 후단 MLP(21→128→1) 는 baseline 과 완전히 동일하게 재사용한다.
 >
-> **모델 코드 위치**: `Sources/vppm/1dcnn/` (본 디렉토리)
+> **참고 실험**: [`baseline`](../baseline/) — 본 실험의 직접 대조군이다. (LSTM 계열 실험은 본 실험과 무관하므로 비교 대상이 아니다.)
+>
+> **모델 코드 위치**: `Sources/vppm/1dcnn/`
 > **결과 출력 위치 (예정)**: `Sources/pipeline_outputs/experiments/vppm_1dcnn/`
-> **참고 실험**: [`vppm_baseline`](../../pipeline_outputs/experiments/vppm_baseline/), [`vppm_lstm`](../../pipeline_outputs/experiments/vppm_lstm/), [`vppm_lstm_dual`](../../pipeline_outputs/experiments/vppm_lstm_dual/)
 
 ---
 
-## 1. 동기 — 왜 1D CNN인가
+## 1. 동기
 
-### 1.1 현재 baseline의 정보 손실
+### 1.1 baseline 의 z-축 압축 방식 (현재 구조)
 
-[`Sources/vppm/baseline/features.py`](../baseline/features.py) 의 `FeatureExtractor.extract_features()` 는 한 supervoxel(8×8 픽셀 × **70 레이어** 고정)에서 21개 피처를 뽑을 때 **모두 z-방향으로 축약** 한다.
+[`Sources/vppm/baseline/features.py`](../baseline/features.py) 는 한 SV 당 70 레이어를 z-축으로 압축해 21차원 스칼라 벡터를 만든다. 압축 방식은 [FEATURES.md §평균 처리 방식별 분류](../FEATURES.md#평균-처리-방식별-분류-1d-cnn-시퀀스화-관점) 의 P1–P4 네 패턴으로 갈라진다.
 
-| 인덱스 | 피처군 | 레이어별 raw shape | 현재 aggregation | 정보 손실 정도 |
-|:--:|:--|:--|:--|:--:|
-| 0–1 | CAD 거리 (edge / overhang) | `(70, 2)` | CAD-가중 z-평균 | 중 |
-| 2 | build_height | 스칼라 | z-블록 중심값 | 없음 (z-position 자체) |
-| 3–10 | DSCNN 8 클래스 비율 | `(70, 8)` | CAD-가중 z-평균 | **높음** |
-| 11–17 | 프린터 센서 7개 | `(70, 7)` | 단순 z-평균 | **높음** |
-| 18 | laser_module | 스칼라 | part 단위 binary | 없음 |
-| 19–20 | 스캔 (return_delay, stripe_boundaries) | `(70, 2)` | 단순 z-평균 | 중 |
+| 패턴 | 0-based 인덱스 | 개수 | xy 패치 평균 | z 축 압축 |
+|:--:|:--|:--:|:--|:--|
+| **P1** | 0, 1, 3, 4, 5, 6, 7, 8, 9, 10 | 10 | CAD 픽셀 평균 | **CAD 픽셀 수 가중 평균** |
+| **P2** | 19, 20 | 2 | melt 픽셀 평균 | **유효 layer 수 단순 평균** |
+| **P3** | 11, 12, 13, 14, 15, 16, 17 | 7 | (없음, 시계열) | **단순 평균** |
+| **P4** | 2, 18 | 2 | (없음) | (스칼라 직접 할당, layer-invariant) |
 
-**문제**: 두 supervoxel이 평균값은 같지만 z-방향 패턴이 다른 경우를 baseline은 구분 못 한다.
-- 예 1: 모든 레이어에서 약한 키홀(seg_excessive_melting=0.05) → 평균 0.05
-- 예 2: 한 레이어에서 강한 키홀(0.7), 나머지는 0 → 평균 0.05
-- 두 경우의 인장 거동은 다를 가능성이 큼 (예 2는 국소 결함, 예 1은 분산 결함).
+P1+P2+P3 = 19 채널은 본질적으로 (70 layer) 길이의 1D 시퀀스를 평균만으로 1차원 스칼라로 줄이는 작업이다. P4 2채널은 layer 에 의존하지 않는 상수다.
 
-### 1.2 LSTM-Dual의 한계 ([LSTM_RESULTS.md](../../pipeline_outputs/experiments/vppm_lstm/LSTM_RESULTS.md))
+### 1.2 평균이 잃는 것
 
-vppm_lstm_dual 은 카메라 시퀀스(visible/0, visible/1)에 CNN-LSTM을 적용했지만, **21개 baseline 피처 자체는 여전히 평균값**으로 들어간다. → 카메라 외 신호(센서, DSCNN, 스캔)의 z-방향 변동도 모델이 활용하지 못함.
+두 SV 가 평균값은 같지만 z-방향 패턴이 다른 경우를 baseline 은 구분 못 한다.
 
-### 1.3 1D CNN을 쓰는 이유
+- 예 1: 모든 layer 에서 약한 키홀(`seg_excessive_melting=0.05`) → 평균 0.05
+- 예 2: 1 layer 에서 강한 키홀(0.7), 나머지는 0 → 평균 ≈ 0.01
 
-- **국소 패턴 검출**: kernel=3 이면 "연속 3 레이어 동안 산소 튐 → DSCNN soot 증가 → 센서 온도 상승" 같은 인접 레이어 간 결합 패턴을 학습.
-- **고정 길이(70 레이어)** 라서 padding 처리 불필요 → LSTM 보다 단순.
-- **Translation invariance**: 결함이 z-방향 어디서 일어나도 패턴 자체를 검출.
-- **빠르고 안정적**: 짧은 시퀀스(70)에서 LSTM 대비 학습이 빠르고 grad vanishing 위험 적음.
+물리적으로는 둘이 다른 결함 모드(분산형 vs 국소형) 인데, 평균만 보는 baseline 은 같은 입력으로 본다.
+
+### 1.3 본 실험의 가설
+
+> **가설**: P1·P2·P3 19채널의 layer 시퀀스에는 평균만으로는 사라지는 z-방향 변동 정보가 있다. **채널별 1D CNN** 으로 시퀀스를 압축하면 단순 평균보다 더 정보량이 많은 SV-level scalar 를 추출할 수 있고, 결과적으로 baseline 의 인장 특성 회귀 RMSE 가 감소한다.
 
 ---
 
-## 2. 데이터 구조 변경
+## 2. 핵심 설계 — 평균을 1D CNN 으로 대체
 
-### 2.1 현재 (baseline)
-
-```
-features.npz
-└── features        : (N_sv, 21) float32      ← 레이어 평균된 값
-```
-
-### 2.2 제안 (1dcnn)
+### 2.1 입력 텐서
 
 ```
-features_seq.npz
-├── features_seq       : (N_sv, 70, 21) float32  ← 레이어별 raw
-├── features_agg       : (N_sv, 21) float32      ← 기존 21 (fallback / 추가 입력)
-├── valid_layer_mask   : (N_sv, 70) bool         ← 시편 영역 내 유효 레이어
-├── sv_indices         : (N_sv, 3) int32         ← (ix, iy, iz)
-├── sample_ids         : (N_sv,) int32
-├── build_ids          : (N_sv,) int32
-└── targets_*          : (N_sv,) float32
+features_seq         : (N_sv, 70, 21)  float32   ← 레이어별 raw 값 (P1/P2/P3 raw, P4 broadcast)
+valid_layer_mask     : (N_sv, 70)      bool      ← z-블록 안 layer 마스크 (현재는 거의 모두 True)
+cad_count_per_layer  : (N_sv, 70)      int32     ← 각 layer SV xy 패치의 CAD 픽셀 수 (P1 가중 검증용)
+melt_count_per_layer : (N_sv, 70)      int32     ← 각 layer 의 melt 픽셀 수 (P2 검증용)
+sample_ids           : (N_sv,)         int32
+build_ids            : (N_sv,)         int32
+voxel_indices        : (N_sv, 3)       int32
+targets_*            : (N_sv,)         float32
 ```
 
-**예상 용량**: 6,299 시편 × 평균 ~수십 SV × 70 × 21 × 4byte ≈ **수 GB** (관리 가능).
+채널 21개 모두 같은 `(N_sv, 70)` shape 으로 정렬해 둔다 — P4 2채널 (#3 build_height, #19 laser_module) 은 70 레이어에 동일 값을 broadcast 해 둔다 (1D CNN 입력 형태 통일용; AdaptiveAvgPool 결과가 평균과 같아져 실제로는 변하지 않음).
 
-### 2.3 어떤 피처를 시퀀스화하는가
+### 2.2 모델 구조 — channel-wise (depthwise) 1D CNN
 
-| 인덱스 | 피처 | 시퀀스 포함? | 이유 |
-|:--:|:--|:--:|:--|
-| 0 | distance_from_edge | ✅ | 레이어별 EDT 결과가 다름 |
-| 1 | distance_from_overhang | ✅ | 〃 |
-| 2 | build_height | ❌ → 스칼라 유지 | 70 레이어 내 거의 선형 (1D CNN 입력으로 무의미) |
-| 3–10 | DSCNN 8 클래스 | ✅ | **z-방향 변동이 핵심 신호** |
-| 11–17 | 프린터 센서 7개 | ✅ | 시계열 그 자체 |
-| 18 | laser_module | ❌ → 스칼라 유지 | part 단위 상수 |
-| 19 | laser_return_delay | ✅ | 레이어별 스캔 패턴 |
-| 20 | laser_stripe_boundaries | ✅ | 〃 |
+baseline 의 21-feat MLP 와 인터페이스를 동일하게 맞춘다. **출력은 SV 당 21차원** 이다.
 
-→ **시퀀스 입력**: 19 채널 × 70 레이어 = `(70, 19)`
-→ **스칼라 입력**: build_height + laser_module = `(2,)`
+```
+입력  x        : (B, 21, 70)               # Conv1d 형식 (B, C, L)
+
+[채널별 독립 1D CNN — depthwise]
+DepthwiseConv1d(C=21, k=3, padding=1, groups=21)  → (B, 21, 70)
+BatchNorm1d(21) → ReLU
+DepthwiseConv1d(C=21, k=3, padding=1, groups=21)  → (B, 21, 70)
+BatchNorm1d(21) → ReLU
+AdaptiveAvgPool1d(1)                              → (B, 21, 1) → squeeze(-1) → (B, 21)
+
+[baseline MLP — 그대로 재사용]
+Linear(21 → 128) → ReLU → Dropout(0.1) → Linear(128 → 1)
+```
+
+핵심 포인트:
+- **groups=21**: 채널 간 가중치 공유 없이 21개 채널이 각자 독립적인 1D CNN 을 갖는다. 각 피처(예: `seg_soot`) 의 layer 시퀀스가 다른 피처(예: `module_oxygen`)와 섞이지 않는다.
+- **AdaptiveAvgPool1d(1)**: 70 layer → 1 scalar. 이 단계가 baseline 의 z-평균을 "학습 가능한 압축" 으로 바꾸는 부분.
+- **MLP 후단**: baseline `VPPM` 클래스의 `(fc1=Linear(21→128), Dropout(0.1), fc2=Linear(128→1))` 을 그대로 재사용. 1DCNN 블록 직후의 21차원 벡터가 baseline 의 21-feat 와 1:1 자리에 들어간다.
+- **가중치 초기화**: MLP 부분(`fc1`/`fc2`) 만 baseline 과 동일한 N(0, 0.1) 로 초기화. Conv/BN 은 PyTorch 기본 (Kaiming-uniform) 을 그대로 사용 (std=0.1 로 줄이면 활성이 죽는 위험).
 
 ---
 
-## 3. 모델 아키텍처
+## 3. 데이터 파이프라인
 
-```
-입력:
-  feats_seq      (B, 19, 70)        [Conv1d 입력 형식: (B, C, L)]
-  feats_scalar   (B, 2)              [build_height, laser_module]
+### 3.1 레이어별 raw 피처 추출 (Phase 1)
 
-1D CNN 인코더:
-  Conv1d(19 → 64, kernel=3, padding=1) → BN → ReLU
-  Conv1d(64 → 64, kernel=3, padding=1) → BN → ReLU
-  Conv1d(64 → 32, kernel=3, padding=1) → BN → ReLU
-  AdaptiveAvgPool1d(1) + AdaptiveMaxPool1d(1) → concat → (B, 64)
-  Linear(64 → d_embed)               [d_embed ∈ {4, 8, 16}]
+[`Sources/vppm/baseline/features.py`](../baseline/features.py) 의 4개 그룹 추출 함수를 **z-평균 직전 단계까지 분리** 한다. 평균은 1D CNN 이 학습으로 대신할 자리이므로 캐시에는 저장하지 않는다.
 
-결합 MLP:
-  concat[cnn_embed (d_embed), feats_scalar (2)] → (B, d_embed+2)
-  Linear → 128 → ReLU → Dropout(0.1)
-  Linear → 1                         [property별 head]
-```
+| 채널 그룹 | 본 실험의 헬퍼 함수 (신설) | 출력 shape | 원본 함수 |
+|:--|:--|:--|:--|
+| P1 (0, 1, 3–10) | `_per_layer_cad_block`, `_per_layer_dscnn_block` | `(n_sv, 70, 2)`, `(n_sv, 70, 8)` + `cad_count_per_layer (n_sv, 70)` | `_extract_cad_features_block`, `_extract_dscnn_features_block` |
+| P2 (19, 20) | `_per_layer_scan_block` | `(n_sv, 70, 2)` + `melt_count_per_layer (n_sv, 70)` | `_extract_scan_features_block` |
+| P3 (11–17) | `_per_layer_temporal_block` | `(n_sv, 70, 7)` (z-block 통째 broadcast) | `temporal_data[key][l0:l1]` |
+| P4 (2, 18) | (헬퍼 없음) | layer-invariant 스칼라를 70 layer 에 broadcast | (그대로 사용) |
 
-### 3.1 변형 옵션 (ablation)
+각 z-블록(70 layer)을 돌면서 SV 당 `(70, 21)` 텐서를 누적해 `features_seq.npz` 로 저장.
 
-| 변형 | 설명 | 우선순위 |
-|:--|:--|:--:|
-| **A: pure 1D CNN** | 위 아키텍처 그대로 | 🔥 main |
-| B: + baseline-21 concat | `concat[cnn_embed, feats_agg(21), feats_scalar(2)]` — 평균 피처도 fallback으로 함께 입력 | 🔥 main |
-| C: + 카메라 임베딩 (lstm_dual 결합) | `concat[cnn_embed, embed_v0, embed_v1, scalar]` — 풀 hierarchical | ⚪ 후속 |
-| D: 1D CNN + LSTM | CNN으로 채널 압축 → LSTM으로 long-range | ⚪ 비교 |
-| E: kernel size sweep | k ∈ {3, 5, 7} | ⚪ 보조 |
+`distance_from_overhang` (#1) 의 vertical-column 누적 상태 (`_prev_cad_layer`, `_last_overhang_layer`) 는 baseline 과 동일하게 instance 변수로 carry-over 한다.
 
-→ **A 와 B 를 먼저 비교**하여 1D CNN 단독으로 baseline-21을 능가하는지 확인. 만약 A < B 라면 시퀀스 신호가 약하다는 뜻.
+P2 채널은 melt 픽셀이 0인 layer 에서 0 으로 채운다 (baseline 과 동일 정책 — 평균이 1D CNN 으로 옮겨갔지만, NaN→SV 드롭 회피 의도는 유지).
 
-### 3.2 Ablation 가설
+**검증**: 본 캐시의 z-축 평균이 기존 [`Sources/pipeline_outputs/features/all_features.npz`](../../pipeline_outputs/features/all_features.npz) 와 채널별 ±1e-5 이내로 일치해야 한다.
+- P1: `cad_count_per_layer` 가중 평균
+- P2: `melt_count_per_layer > 0` layer 단순 평균
+- P3: 단순 평균
+- P4: broadcast 한 70 값이 모두 같으므로 평균 = 자기 자신
 
-| 비교 | 가설 | 검증 방법 |
-|:--|:--|:--|
-| baseline-21 vs 변형 A | 시퀀스 정보가 의미 있다면 A 가 RMSE ↓ | 5-fold RMSE ± std |
-| 변형 A vs 변형 B | A가 B와 비슷 → CNN이 평균 정보를 자체 학습. A < B → CNN이 평균을 못 뽑음 (집계 후처리 필요) | 5-fold RMSE 비교 |
-| LSTM-Dual vs 변형 C | 카메라 + 21 시퀀스가 카메라 단독보다 좋은가 | RMSE per build (B1.4/B1.5 주목) |
+`features_seq.py --validate` 옵션으로 채널별 max abs diff 를 출력한다.
+
+### 3.2 정규화
+
+학습 직전에 **채널별 [-1, 1] min-max 정규화** ([`common/dataset.py::normalize`](../common/dataset.py) 사용). min/max 는 (N_sv × 70) 풀어서 채널마다 산출한다. 타겟 정규화는 baseline 과 동일.
+
+NaN SV 드롭 정책도 baseline 과 동일 — 시퀀스에 NaN 이 있으면 SV 단위 드롭. P2 의 0-fallback 은 features_seq 단계에서 이미 처리되어 NaN 이 존재하지 않는다.
+
+### 3.3 K-Fold
+
+[`common/dataset.py::create_cv_splits`](../common/dataset.py) 의 sample-wise 5-fold 그대로 재사용 (seed=42). 같은 시편의 모든 SV 가 같은 fold 에 들어가도록 보장.
 
 ---
 
-## 4. 디렉토리 / 파일 구조
+## 4. 디렉토리 구조
 
 ```
-Sources/vppm/1dcnn/                        ← 본 모듈 (코드 + PLAN.md)
-├── PLAN.md                                ← 본 문서
+Sources/vppm/1dcnn/
+├── PLAN.md                       ← 본 문서
 ├── __init__.py
-├── config.py                              ← 1dcnn 전용 하이퍼파라미터
-├── features_seq.py                        ← 레이어별 피처 추출 (FeatureExtractor 확장)
-├── dataset.py                             ← (N, 70, 19) 로더 + 정규화
-├── model.py                               ← VPPM_1DCNN 클래스 (변형 A/B/C 지원)
-├── train.py                               ← 4 prop × 5 fold 학습 (vppm_lstm_dual/train.py 미러)
-├── evaluate.py                            ← RMSE 산출 + plot
-└── run.py                                 ← 진입점 (--phase {features, train, evaluate, all})
+├── config.py                     ← 1dcnn 전용 하이퍼 (kernel, layers, P1-P4 인덱스)
+├── features_seq.py               ← FeatureSequenceExtractor (Phase 1 캐시 생성 + --validate)
+├── dataset.py                    ← (N, 21, 70) 로더 + 채널별 정규화
+├── model.py                      ← VPPM_1DCNN (depthwise CNN + baseline MLP)
+├── train.py                      ← baseline/train.py 미러 (입력만 시퀀스)
+├── evaluate.py                   ← RMSE + 빌드별 분해
+└── run.py                        ← --phase {features, train, evaluate, all}
 
-Sources/pipeline_outputs/experiments/vppm_1dcnn/   ← 산출물 디렉토리
+Sources/pipeline_outputs/experiments/vppm_1dcnn/
 ├── features/
-│   ├── features_seq.npz                   ← (N, 70, 19) raw 시퀀스
-│   └── normalization.json                 ← 채널별 min/max
+│   ├── features_seq.npz          ← (N_sv, 70, 21) raw + masks + counts
+│   └── normalization.json
 ├── models/
 │   ├── vppm_1dcnn_{YS,UTS,UE,TE}_fold{0..4}.pt
 │   └── training_log.json
-├── results/
-│   ├── metrics_raw.json
-│   ├── metrics_summary.json
-│   ├── predictions_{YS,UTS,UE,TE}.csv
-│   ├── per_build_rmse.json                ← 빌드별 RMSE 분해
-│   └── plots/
-└── experiment_meta.json
+└── results/
+    ├── metrics_summary.json
+    ├── predictions_{YS,UTS,UE,TE}.csv
+    └── correlation_plots.png
 ```
+
+`docker/1dcnn/` 의 Dockerfile / docker-compose.yml / README.md 는 본 PLAN 의 다음 단계에서 [docker-setup](../../../.claude/agents/docker-setup.md) 서브에이전트가 일관 패턴으로 생성한다.
 
 ---
 
-## 5. 구현 단계 (Phase)
+## 5. 실행 단계 (Phase)
 
-### Phase 1 — 데이터 추출 (1–2일)
+### Phase 1 — 시퀀스 캐시 생성
 
-**목표**: 레이어별 피처 시퀀스 캐시 생성.
+`run.py --phase features` 로 시작.
 
-**작업**:
-1. [`features.py`](../baseline/features.py) 의 4개 그룹 추출 함수를 **레이어 평균 직전 단계까지 분리**:
-   - `_extract_cad_features_per_layer(layer)` → `(n_sv, 2)` per layer
-   - `_extract_dscnn_features_per_layer(layer)` → `(n_sv, 8)` per layer
-   - `_extract_temporal_per_layer(layer)` → `(n_sv, 7)` per layer (시편 영역에 broadcast)
-   - `_extract_scan_features_per_layer(layer)` → `(n_sv, 2)` per layer
-2. `Sources/vppm/1dcnn/features_seq.py::FeatureSequenceExtractor` 신설:
-   - 각 z-블록에서 70 레이어를 반복 호출, `(n_sv, 70, 19)` 텐서 누적
-   - 시편 영역 밖 레이어는 `valid_layer_mask=False` 로 표시
-3. `Sources/vppm/1dcnn/run.py --phase features` → `features/features_seq.npz` 저장.
+1. `features_seq.py::FeatureSequenceExtractor` 가 5개 빌드 HDF5 를 순회하며 SV 당 `(70, 21)` 텐서를 누적.
+2. `valid_layer_mask`, `cad_count_per_layer`, `melt_count_per_layer` 도 함께 저장.
+3. 검증 단계: `python -m Sources.vppm.1dcnn.features_seq --validate` 로 z-평균이 기존 baseline `all_features.npz` 와 채널별 ±1e-5 이내인지 확인.
 
-**검증**: 시퀀스의 레이어 평균이 기존 [`features.npz`](../../pipeline_outputs/features/all_features.npz) 와 **일치**해야 함 (단순평균 채널: 11–17, 19–20). CAD 가중평균(0–1)·DSCNN(3–10)은 마스크 가중치를 별도 보존 후 비교.
+### Phase 2 — 학습
 
-### Phase 2 — 모델 구현 + 학습 (1일)
+`run.py --phase train` 으로 4 property × 5 fold = 20 모델 학습. baseline 의 [`train.py`](../baseline/train.py) 와 동일한 train loop. 차이는 입력 텐서 shape `(B, 21, 70)` 와 모델 클래스만.
 
-1. `model.py::VPPM_1DCNN` 작성. `variant ∈ {"A", "B"}` 인자로 두 구조 모두 지원.
-2. `dataset.py::build_normalized_dataset_seq()`:
-   - 채널별 min-max 정규화 ([-1, 1])
-   - `valid_layer_mask=False` 영역은 0 으로 패딩 (또는 채널평균)
-   - 정규화 파라미터 JSON 저장
-3. `train.py`: [`vppm_lstm_dual/train.py`](../lstm_dual/train.py) 의 `train_all()` 구조 그대로 차용. 데이터 입력만 시퀀스로 교체.
-4. K-fold 분할은 [`Sources/vppm/common/dataset.py::create_cv_splits()`](../common/dataset.py) 재사용 (sample-wise 5-fold).
+### Phase 3 — 평가
 
-### Phase 3 — 평가 + 비교 (0.5일)
-
-1. `evaluate.py`: 4 property × 5 fold RMSE 산출.
-2. **빌드별 RMSE 분해** (B1.1~B1.5) — vppm_lstm_dual 에서 누락되었던 분석을 본 실험에서 표준화.
-3. baseline / lstm-single / lstm-dual / 1dcnn-A / 1dcnn-B 5종 비교 표를 `results/comparison.md` 에 기록.
-4. correlation plot, fold별 학습 곡선 시각화.
-
-### Phase 4 — 후속 ablation (선택)
-
-- d_embed sweep: {4, 8, 16}
-- kernel sweep: {3, 5, 7}
-- 변형 C (1dcnn + lstm_dual 카메라 임베딩) 통합 모델
-- per-build 분석에서 B1.4/B1.5 (스패터/리코터) 빌드 RMSE 가 baseline 대비 얼마나 줄어드는지 확인
+`run.py --phase evaluate` 로 RMSE/R² 산출 + per-build 분해 + correlation plot.
 
 ---
 
@@ -206,36 +176,33 @@ Sources/pipeline_outputs/experiments/vppm_1dcnn/   ← 산출물 디렉토리
 
 | 항목 | 값 | 비고 |
 |:--|:--|:--|
-| 시퀀스 입력 채널 | 19 | DSCNN 8 + 센서 7 + CAD 2 + 스캔 2 |
-| 시퀀스 길이 | 70 | SV_Z_LAYERS 고정 |
-| 스칼라 입력 | 2 | build_height, laser_module |
-| d_embed | **8** (default) | 4/16 ablation |
-| Conv1d 채널 | 19 → 64 → 64 → 32 | kernel=3, padding=1 |
-| Pooling | AdaptiveAvg + AdaptiveMax concat | (B, 64) |
-| MLP hidden | 128 | dropout=0.1 |
-| 손실 | L1Loss | baseline / lstm 과 동일 |
-| Optimizer | Adam, lr=1e-3, wd=0 | |
-| Batch size | 256 | |
-| Early stop | patience=50, max=5000 epoch | |
-| Grad clip | 1.0 | |
-| K-fold | 5 (sample-wise) | seed=42 |
-| Property | YS, UTS, UE, TE 각각 별도 모델 | |
+| 입력 | `(B, 21, 70)` | depthwise Conv1d 형식 |
+| Conv 채널 | 21 → 21 → 21 (depthwise) | groups=21 |
+| Kernel size | 3 (padding=1) | |
+| Layers | 2 | + BN + ReLU |
+| Pooling | AdaptiveAvgPool1d(1) | (B, 21) |
+| MLP | 21 → 128 → 1 | baseline 과 동일 |
+| Dropout | 0.1 | baseline 과 동일 |
+| 손실 | L1Loss | baseline 과 동일 |
+| Optimizer | Adam, lr=1e-3 | baseline 과 동일 |
+| Batch size | 256 | baseline 과 동일 |
+| Early stop | patience=50, max=5000 epoch | baseline 과 동일 |
+| Grad clip | 1.0 | baseline 과 동일 |
+| K-fold | 5 (sample-wise, seed=42) | baseline 과 동일 |
+| Property | YS, UTS, UE, TE 별도 모델 | baseline 과 동일 |
+
+→ **모델 블록만 다르고 나머지는 모두 baseline 과 동일**. 따라서 RMSE 차이가 1D CNN 압축 자체의 효과를 직접 반영한다.
 
 ---
 
 ## 7. 성공 기준
 
-| 지표 | 합격선 | 코멘트 |
+| 지표 | 합격선 | 의미 |
 |:--|:--|:--|
-| **변형 A (1DCNN 단독)** vs baseline | 모든 property 에서 평균 RMSE ↓ | 시퀀스 정보가 실재함을 입증 |
-| **변형 A** vs LSTM-single (22-feat) | UTS/UE/TE RMSE 가 ±std 안 또는 더 좋음 | baseline 21 시퀀스만으로 카메라 임베딩 수준 도달 |
-| **빌드별 RMSE** (B1.4 / B1.5) | baseline 대비 ≥ 10% 감소 | 스패터/리코터 빌드에서 시퀀스 신호가 핵심일 것이라는 가설 검증 |
-| 학습 안정성 | 5 fold std/mean < 7% | LSTM-dual 수준 |
-
-**실패 시나리오 대응**:
-- A ≈ baseline → 시퀀스 신호가 weak. 변형 B (concat baseline-21) 로 재시도. 그래도 같으면 21 피처 자체의 표현력 한계.
-- 학습 불안정 → BatchNorm 을 LayerNorm 으로 교체, dropout 추가.
-- 메모리 폭주 → `features_seq.npz` 를 빌드별 분리 + memmap 로딩.
+| **5-fold 평균 RMSE** (4 property 평균) | baseline 대비 ↓ | 1D CNN 압축이 평균보다 정보를 더 잘 보존 |
+| **per-property RMSE** | YS/UTS/UE/TE 모두 baseline 의 ±std 안 또는 더 좋음 | 특정 property 만 좋은 게 아니라 일관 개선 |
+| **per-build RMSE** (B1.4 / B1.5) | baseline 대비 ≥ 5% 감소 | z-방향 결함 변동이 큰 빌드에서 더 큰 이득이 가설 |
+| 학습 안정성 | fold std/mean < 7% | baseline 과 동등한 안정성 |
 
 ---
 
@@ -243,29 +210,16 @@ Sources/pipeline_outputs/experiments/vppm_1dcnn/   ← 산출물 디렉토리
 
 | 위험 | 대응 |
 |:--|:--|
-| Phase 1 캐시 생성 시간 (HDF5 5빌드 재파싱) | 기존 `extract_features` 가 60–90 분 / 빌드 → 시퀀스 버전은 ~1.5× 예상. 빌드별 병렬 처리 가능. |
-| CAD 가중평균을 1D CNN에서 재현 못 할 가능성 | `valid_layer_mask` 와 `cad_count_per_layer` 를 별도 채널로 추가 (총 20–21 채널). |
-| 센서 7개가 슈퍼복셀 단위로 동일 (xy 균일) | 같은 z-블록 내 모든 SV 가 같은 시계열을 봄 → 정보 추가 효과는 크지 않을 수 있음. **DSCNN/스캔 채널이 주효할 것**. |
-| 모델 비교 공정성 | 동일 fold split, 동일 normalization 정책, 동일 early-stop 사용 (모두 [`common/dataset.py`](../common/dataset.py) 경유). |
+| Phase 1 캐시 시간 (HDF5 5빌드 재파싱) | baseline `extract_features` 가 60–90 분/빌드 → 시퀀스 버전은 비슷한 비용. 빌드별 병렬 실행 가능. |
+| P3 7채널이 z-블록 내 모든 SV 에서 동일 시계열 | 같은 z-블록 SV 들은 입력의 P3 부분이 완전히 같음 → 1D CNN 이 "동일 입력 → 동일 출력" 을 줄 뿐, 평균과 거의 같아질 수 있음. 신호의 핵심은 P1 (DSCNN 8채널) + P2 (스캔 2채널) 라고 가정. |
+| P1 의 CAD-가중 평균이 단순 1D CNN 으로 재현 불가 | `cad_count_per_layer` 를 캐시에 보존해 검증 + 향후 보조 채널 옵션으로 확장 가능. |
+| baseline 과 fold split 불일치 | `common/dataset.py::create_cv_splits(seed=42)` 그대로 호출. 평가 단계에서 baseline 과 같은 SV 들에 대해 비교. |
 
 ---
 
-## 9. 일정 요약
+## 9. 다음 액션
 
-| Phase | 내용 | 예상 기간 |
-|:--:|:--|:--:|
-| 1 | 레이어별 피처 추출 + 캐시 | 1–2 일 |
-| 2 | 모델 구현 + 5-fold 학습 (4 prop) | 1 일 |
-| 3 | 평가 + 비교표 | 0.5 일 |
-| 4 | (선택) ablation / 통합 모델 | +1–2 일 |
-
-**총 ~3–5 일** 안에 baseline-21 vs 1D CNN 비교 결과가 나옴.
-
----
-
-## 10. 다음 액션
-
-1. 본 PLAN.md 검토 (사용자 승인)
-2. Phase 1 시작: `Sources/vppm/1dcnn/features_seq.py` 신설
-3. 캐시 생성 → 시퀀스 평균이 기존 21 피처와 일치 검증
-4. 모델 학습 → 결과 비교
+1. 본 PLAN.md 검토 (사용자 승인) — 특히 §2.2 의 **depthwise k=3 × 2층 → AvgPool → 21차원 → MLP(21→128→1)** 구조가 의도와 맞는지 확인.
+2. Phase 1 구현: `features_seq.py` 작성 + 캐시 검증 (z-평균이 기존 `all_features.npz` 와 일치).
+3. `docker/1dcnn` compose 셋업 (docker-setup 서브에이전트).
+4. Phase 2 학습 → baseline 결과(`Sources/vppm/baseline/MODEL.md`) 와 1:1 비교.

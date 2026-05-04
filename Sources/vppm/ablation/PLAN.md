@@ -72,7 +72,20 @@
 
 도커 실행: [docker/ablation/scan_sub/](../../../docker/ablation/scan_sub/)
 
-### 1.6 실행 도커 인프라
+### 1.6 CAD 서브 ablation (E34–E36) — ⏳ 계획
+
+[PLAN_cad_subablation.md](./PLAN_cad_subablation.md) — E3 (no-cad, ΔUTS +6.63 / 채널 효율 1위) 의
+3 채널 분해.
+
+| ID | 제거 | n_feats | 동기 |
+|:--:|:----|:-------:|:----|
+| E34 | cad_distance_edge (#0 단독)     | 20 | 빌드 평판 열흡수 prior |
+| E35 | cad_distance_overhang (#1 단독) | 20 | 응고 비등방성 / overhang 미세조직 prior |
+| E36 | cad_build_height (#2 단독)      | 20 | 누적 열 이력 — **최강 후보** |
+
+도커 실행: [docker/ablation/](../../../docker/ablation/) `--profile cad_sub`
+
+### 1.7 실행 도커 인프라
 
 실험군별 도커 디렉터리:
 
@@ -237,6 +250,7 @@ Sources/vppm/ablation/
 ├── PLAN_E13_combined.md                 # E13 조합 계획
 ├── PLAN_dscnn_subablation.md            # E5–E12 + E23/E24 DSCNN 서브 계획
 ├── PLAN_sensor_subablation.md           # E14–E22 센서 서브 계획
+├── PLAN_cad_subablation.md              # E34–E36 CAD 서브 계획
 ├── run.py                               # 실행 러너 (--experiment / --all / --rebuild-summary)
 ├── analyze_per_build.py                 # 빌드별 잔차 분해 스크립트
 └── __init__.py

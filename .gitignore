@@ -7,10 +7,13 @@ __pycache__/
 *.so
 
 dino_clustering_seung/
+seung_dscnn/
 ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/\[baseline\] (Peregrine v2023-11)/*.hdf5
 ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/\[baseline\] (Peregrine v2023-11)_Open(Sample)/
 ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/\[new_v1\] (Peregrine v2023-09)/*.hdf5
+ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/\[new_v1\] (Peregrine v2023-09)_Open(Sample)/
 ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/\[new_v2\] (Peregrine v2023-10)/*.hdf5
+ORNL_Data/Co-Registered In-Situ and Ex-Situ Dataset/\[new_v2\] (Peregrine v2023-10)_Open(Sample)/
 ORNL_Data/DSCNN_Dataset
 
 .claude/

@@ -1,7 +1,7 @@
-# VPPM Feature Ablation — 27 실험을 단일 compose 에 통합.
+# VPPM Feature Ablation — 30 실험을 단일 compose 에 통합.
 #
 # 핵심 설계
-#  - 27 service (E1~E13, E14~E22, E23~E24, E31~E33) + 1 summary
+#  - 30 service (E1~E13, E14~E22, E23~E24, E31~E33, E34~E36) + 1 summary
 #  - YAML anchor 로 boilerplate 공유
 #  - profiles 로 그룹 / 실험 단위 실행
 #  - depends_on(service_completed_successfully) 로 GPU 4장 rotation batching
@@ -14,6 +14,7 @@
 #   docker compose --profile combined up    # E13
 #   docker compose --profile sensor_sub up  # E14~E22 내부 batching
 #   docker compose --profile scan_sub up    # E31~E33
+#   docker compose --profile cad_sub up     # E34~E36
 #   docker compose --profile summary up     # 산출물 통합 summary.md 재생성
 #
 # 단일 실험만:
@@ -69,7 +70,7 @@ x-cmd: &cmd
     exec $$VENV_PY -m Sources.vppm.ablation.run --experiment $$EXPERIMENT_ID --skip-summary $${ABLATION_EXTRA:-}
 
 # ────────────────────────────────────────────────────────────────────
-# 27 ablation services + summary
+# 30 ablation services + summary
 # ────────────────────────────────────────────────────────────────────
 services:
   # ── Phase 1: main groups (E1~E4) — GPU 0~3 병렬 ──────────────────
@@ -396,6 +397,37 @@ services:
       ABLATION_EXTRA: ${ABLATION_EXTRA:-}
     command: *cmd
     profiles: ["scan_sub", "E33"]
+
+  # ── Phase 6: cad_sub (E34~E36) — 3-GPU 병렬, batching 없음 ─────
+  E34:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E34
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["cad_sub", "E34"]
+
+  E35:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "1"
+      EXPERIMENT_ID: E35
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["cad_sub", "E35"]
+
+  E36:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "2"
+      EXPERIMENT_ID: E36
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["cad_sub", "E36"]
 
   # ── summary 통합 재생성 (학습 없음, 디스크 스캔만) ────────────────
   summary:

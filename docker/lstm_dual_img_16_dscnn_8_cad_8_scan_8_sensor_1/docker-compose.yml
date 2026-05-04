@@ -1,0 +1,217 @@
+# VPPM-LSTM-Dual-Img-16-DSCNN-8-CAD-8-Scan-8-Sensor-1 학습 — 4-GPU 병렬 (property-parallel).
+#   7-stream 모델: visible/0(d=16) + visible/1(d=16) + sensor LSTM(1) +
+#                  dscnn(d=8) + cad_patch(d=8) + scan_patch(d=8) → MLP 59.
+# 신규 캐시 빌드 단계 없음 — 모든 캐시 외부 재사용.
+#
+# 구조: 4 train services (각 GPU 1장에 1 property) + 1 evaluate service (4 train 완료 후 자동 실행).
+#   - train-ys  on GPU ${GPU_YS}
+#   - train-uts on GPU ${GPU_UTS}
+#   - train-ue  on GPU ${GPU_UE}
+#   - train-te  on GPU ${GPU_TE}
+#   - evaluate  on GPU ${GPU_EVAL}  (depends_on 의 service_completed_successfully 로 4 train 완료 대기)
+#
+# 산출물 → Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1/
+#
+# 사전조건:
+#   - Sources/pipeline_outputs/features/all_features.npz                                                                   (baseline 피처)
+#   - Sources/pipeline_outputs/experiments/vppm_lstm/cache/crop_stacks_B1.*.h5                                            (visible/0)
+#   - Sources/pipeline_outputs/experiments/vppm_lstm_dual/cache/crop_stacks_v1_B1.*.h5                                   (visible/1)
+#   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7/cache/sensor_stacks_B1.*.h5                      (sensor)
+#   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8/cache/dscnn_stacks_B1.*.h5               (dscnn)
+#   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/cache/cad_patch_stacks_B1.*.h5
+#   - Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/cache/scan_patch_stacks_B1.*.h5
+#
+# 사전 mkdir (호스트에서; docker daemon 자동 생성 시 root 소유 됨):
+#   mkdir -p ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1/{models,results,features}
+#
+# 사용법:
+#
+#   cd docker/lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1
+#   docker compose up -d --build       # 4 train 동시 시작 → 끝나면 evaluate 자동 실행
+#   docker compose logs -f             # 로그 실시간 (services 다중)
+#   docker compose logs -f train-ys    # 특정 service 만
+#   docker compose down                # 끝났거나 중단하고 싶을 때 정리
+#
+# GPU/단계 변경 (.env 수정 또는 inline):
+#   GPU_YS=0 GPU_UTS=1 GPU_UE=2 GPU_TE=3 GPU_EVAL=0 docker compose up -d --build
+#   SENSOR_1_EXTRA=--quick docker compose up -d --build       # 모든 service 가 --quick 받음
+#
+# 단일 GPU 로 모두 순차 학습 (예전 동작):
+#   docker compose run --rm train-ys ... 식 대신, 1-service 가 필요하면 git revert 또는 별도 compose 파일.
+
+# ──────────────────────────────────────────────────────────────────────
+# YAML anchor — 4 train + 1 evaluate 가 공유하는 설정 (volumes / env 일부 / build / entrypoint base)
+# ──────────────────────────────────────────────────────────────────────
+x-base: &base
+  build:
+    context: ../..
+    dockerfile: docker/lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1/Dockerfile
+  image: vppm-sensor-1:gpu
+  runtime: nvidia
+  user: "${UID_GID:-1000:1000}"
+  restart: "no"
+  shm_size: "4gb"
+  working_dir: /workspace
+  volumes:
+    - /etc/passwd:/etc/passwd:ro
+    - /etc/group:/etc/group:ro
+    - ../../venv:/workspace/venv:ro
+    # baseline features (입력) - read-only
+    - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
+    # visible/0 캐시 (입력) - read-only
+    - ../../Sources/pipeline_outputs/experiments/vppm_lstm:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm:ro
+    # visible/1 캐시 (입력) - read-only
+    - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual:ro
+    # sensor 캐시 (입력) - read-only
+    - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7:ro
+    # dscnn 캐시 (입력) - read-only
+    - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8:ro
+    # cad_patch / scan_patch 캐시 (입력, fullstack 디렉터리에서 재사용) - read-only
+    - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4:ro
+    # 산출물 - rw
+    - ../../Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1:rw
+  environment:
+    - PYTHONPATH=/workspace
+    - HOME=/tmp
+    - SENSOR_1_EXTRA=${SENSOR_1_EXTRA:-}                       # e.g. "--quick"
+
+# ──────────────────────────────────────────────────────────────────────
+# entrypoint — train (prop 필터 받음). evaluate 와 사전조건 체크 공유.
+# ──────────────────────────────────────────────────────────────────────
+x-train-cmd: &train-cmd
+  - sh
+  - -c
+  - |
+    set -e
+    VENV_PY=/workspace/venv/bin/python
+    EXP=lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1
+    PROP=$${PROP:?PROP env 미설정}
+    # ── 사전 검증 ──────────────────────────────────────────────────
+    if [ ! -x "$$VENV_PY" ]; then
+      echo "[$$EXP:$$PROP] FATAL: $$VENV_PY 없음 — 호스트 venv 가 마운트되지 않았습니다" >&2; exit 1
+    fi
+    if [ ! -f /workspace/Sources/pipeline_outputs/features/all_features.npz ]; then
+      echo "[$$EXP:$$PROP] FATAL: all_features.npz 없음 — baseline 피처 추출 먼저 완료" >&2; exit 1
+    fi
+    V0_CACHE=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm/cache
+    if [ ! -d "$$V0_CACHE" ] || [ -z "$$(ls -A $$V0_CACHE/crop_stacks_B1.*.h5 2>/dev/null)" ]; then
+      echo "[$$EXP:$$PROP] FATAL: visible/0 캐시 없음 ($$V0_CACHE)" >&2; exit 1
+    fi
+    V1_CACHE=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual/cache
+    if [ ! -d "$$V1_CACHE" ] || [ -z "$$(ls -A $$V1_CACHE/crop_stacks_v1_B1.*.h5 2>/dev/null)" ]; then
+      echo "[$$EXP:$$PROP] FATAL: visible/1 캐시 없음 ($$V1_CACHE)" >&2; exit 1
+    fi
+    SENSOR_CACHE=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7/cache
+    if [ ! -d "$$SENSOR_CACHE" ] || [ -z "$$(ls -A $$SENSOR_CACHE/sensor_stacks_B1.*.h5 2>/dev/null)" ]; then
+      echo "[$$EXP:$$PROP] FATAL: sensor 캐시 없음 ($$SENSOR_CACHE)" >&2; exit 1
+    fi
+    DSCNN_CACHE=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_4_sensor_7_dscnn_8/cache
+    if [ ! -d "$$DSCNN_CACHE" ] || [ -z "$$(ls -A $$DSCNN_CACHE/dscnn_stacks_B1.*.h5 2>/dev/null)" ]; then
+      echo "[$$EXP:$$PROP] FATAL: dscnn 캐시 없음 ($$DSCNN_CACHE)" >&2; exit 1
+    fi
+    CAD_CACHE=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/cache
+    if [ ! -d "$$CAD_CACHE" ] || [ -z "$$(ls -A $$CAD_CACHE/cad_patch_stacks_B1.*.h5 2>/dev/null)" ]; then
+      echo "[$$EXP:$$PROP] FATAL: cad_patch 캐시 없음 ($$CAD_CACHE)" >&2; exit 1
+    fi
+    SCAN_CACHE=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_1dcnn_sensor_4/cache
+    if [ ! -d "$$SCAN_CACHE" ] || [ -z "$$(ls -A $$SCAN_CACHE/scan_patch_stacks_B1.*.h5 2>/dev/null)" ]; then
+      echo "[$$EXP:$$PROP] FATAL: scan_patch 캐시 없음 ($$SCAN_CACHE)" >&2; exit 1
+    fi
+    OUT=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1
+    if [ ! -d "$$OUT" ]; then
+      echo "[$$EXP:$$PROP] FATAL: $$OUT 가 마운트되지 않음 (rw 필요)" >&2; exit 1
+    fi
+    if ! touch "$$OUT/.write_test_$$PROP" 2>/dev/null; then
+      echo "[$$EXP:$$PROP] FATAL: $$OUT 쓰기 실패 — UID/권한 확인" >&2; exit 1
+    fi
+    rm -f "$$OUT/.write_test_$$PROP"
+    mkdir -p "$$OUT/models" "$$OUT/results" "$$OUT/features"
+    $$VENV_PY -c "import torch,sys;print(f'[$$EXP:$$PROP] python={sys.version.split()[0]} torch={torch.__version__} cuda={torch.cuda.is_available()} devs={torch.cuda.device_count()}')"
+    # ── train (prop 필터; --all 동작이지만 prop 필터 있으면 evaluate skip) ──
+    echo "[$$EXP:$$PROP] phase=train extra=$${SENSOR_1_EXTRA}"
+    $$VENV_PY -m Sources.vppm.lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1.run --phase train --prop $$PROP $${SENSOR_1_EXTRA}
+    echo "[$$EXP:$$PROP] train done."
+
+x-eval-cmd: &eval-cmd
+  - sh
+  - -c
+  - |
+    set -e
+    VENV_PY=/workspace/venv/bin/python
+    EXP=lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1
+    OUT=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1
+    if [ ! -x "$$VENV_PY" ]; then
+      echo "[$$EXP:eval] FATAL: $$VENV_PY 없음" >&2; exit 1
+    fi
+    if [ ! -d "$$OUT/models" ] || [ -z "$$(ls -A $$OUT/models/*.pt 2>/dev/null)" ]; then
+      echo "[$$EXP:eval] FATAL: 모델 .pt 파일이 $$OUT/models 에 없음 — train 컨테이너들이 먼저 완료돼야 합니다" >&2; exit 1
+    fi
+    echo "[$$EXP:eval] phase=evaluate (모든 prop 모델 로드 → metrics_summary + plots)"
+    $$VENV_PY -m Sources.vppm.lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1.run --phase evaluate
+    echo "[$$EXP:eval] Done. Results → Sources/pipeline_outputs/experiments/vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1/results/"
+
+# ──────────────────────────────────────────────────────────────────────
+# 4 property-parallel train services + 1 evaluate service
+# ──────────────────────────────────────────────────────────────────────
+services:
+  train-ys:
+    <<: *base
+    container_name: vppm-sensor-1-train-ys
+    environment:
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+      - SENSOR_1_EXTRA=${SENSOR_1_EXTRA:-}
+      - NVIDIA_VISIBLE_DEVICES=${GPU_YS:-0}
+      - PROP=YS
+    command: *train-cmd
+
+  train-uts:
+    <<: *base
+    container_name: vppm-sensor-1-train-uts
+    environment:
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+      - SENSOR_1_EXTRA=${SENSOR_1_EXTRA:-}
+      - NVIDIA_VISIBLE_DEVICES=${GPU_UTS:-1}
+      - PROP=UTS
+    command: *train-cmd
+
+  train-ue:
+    <<: *base
+    container_name: vppm-sensor-1-train-ue
+    environment:
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+      - SENSOR_1_EXTRA=${SENSOR_1_EXTRA:-}
+      - NVIDIA_VISIBLE_DEVICES=${GPU_UE:-2}
+      - PROP=UE
+    command: *train-cmd
+
+  train-te:
+    <<: *base
+    container_name: vppm-sensor-1-train-te
+    environment:
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+      - SENSOR_1_EXTRA=${SENSOR_1_EXTRA:-}
+      - NVIDIA_VISIBLE_DEVICES=${GPU_TE:-3}
+      - PROP=TE
+    command: *train-cmd
+
+  evaluate:
+    <<: *base
+    container_name: vppm-sensor-1-evaluate
+    environment:
+      - PYTHONPATH=/workspace
+      - HOME=/tmp
+      - NVIDIA_VISIBLE_DEVICES=${GPU_EVAL:-0}
+    depends_on:
+      train-ys:
+        condition: service_completed_successfully
+      train-uts:
+        condition: service_completed_successfully
+      train-ue:
+        condition: service_completed_successfully
+      train-te:
+        condition: service_completed_successfully
+    command: *eval-cmd
