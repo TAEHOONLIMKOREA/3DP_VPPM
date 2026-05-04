@@ -14,7 +14,7 @@
 | **제거 그룹** | G1 DSCNN (8 채널) |
 | **제거 피처 idx** | 3, 4, 5, 6, 7, 8, 9, 10 |
 | **사용 피처 수** | 21 → **13** |
-| **출력 디렉터리** | `Sources/pipeline_outputs/ablation/E1_no_dscnn/` |
+| **출력 디렉터리** | `Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E1_no_dscnn/` |
 
 ### 1.1 제거되는 8 개 DSCNN 채널
 
@@ -51,15 +51,15 @@
 ### 3.1 사전 요건
 
 - `Sources/vppm/common/config.py` 의 `FEATURE_GROUPS["dscnn"] = [3, ..., 10]` — **이미 등록됨**
-- `Sources/vppm/ablation/run.py` 의 `EXPERIMENTS["E1"]` — **이미 등록됨**
+- `Sources/vppm/baseline_ablation_with_lstm/run.py` 의 `EXPERIMENTS["E1"]` — **이미 등록됨**
 
 ### 3.2 실행 명령
 
 **호스트 (단일 실행):**
 
 ```bash
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E1          # 전체
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E1 --quick  # smoke
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E1          # 전체
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E1 --quick  # smoke
 ```
 
 **도커 (GPU 핀 + 격리):**
@@ -73,7 +73,7 @@ cd docker/ablation/dscnn
 ### 3.3 산출물
 
 ```
-Sources/pipeline_outputs/ablation/E1_no_dscnn/
+Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E1_no_dscnn/
 ├── experiment_meta.json       # dropped_feature_indices, n_feats, n_samples
 ├── features/
 │   └── normalization.json     # 13-차원 재정규화 통계
@@ -91,7 +91,7 @@ Sources/pipeline_outputs/ablation/E1_no_dscnn/
 
 ## 4. 실제 결과 (v2, 2026-04-28)
 
-> [metrics_raw.json](../../pipeline_outputs/ablation/E1_no_dscnn/results/metrics_raw.json) 참조.
+> [metrics_raw.json](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/E1_no_dscnn/results/metrics_raw.json) 참조.
 > v1 (2026-04-23) 결과는 G4 placeholder 영향으로 baseline 의 절댓값이 달랐음. v2 가 표준.
 
 ### 4.1 RMSE (원본 스케일)
@@ -129,7 +129,7 @@ Sources/pipeline_outputs/ablation/E1_no_dscnn/
 
 ### 5.1 ΔRMSE (UTS) 빌드별
 
-상세 표는 [E13 per_build_analysis](../../pipeline_outputs/ablation/E13_no_dscnn_sensor/per_build_analysis.md)
+상세 표는 [E13 per_build_analysis](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/E13_no_dscnn_sensor/per_build_analysis.md)
 의 "ΔE13 − ΔE2" 열로부터 역산. DSCNN 만 제거한 E1 의 per-build 분해는 별도 실험 필요 (미수행).
 
 간접 추론:
@@ -139,8 +139,8 @@ Sources/pipeline_outputs/ablation/E1_no_dscnn/
 
 후속 명령:
 ```bash
-./venv/bin/python -m Sources.vppm.ablation.analyze_per_build --experiment E1
-# → Sources/pipeline_outputs/ablation/E1_no_dscnn/per_build_analysis.md
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.analyze_per_build --experiment E1
+# → Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E1_no_dscnn/per_build_analysis.md
 ```
 
 ---
@@ -158,4 +158,4 @@ Sources/pipeline_outputs/ablation/E1_no_dscnn/
 
 - 공통 설정 / 인덱스: [PLAN.md](./PLAN.md)
 - 조합 실험: [PLAN_E13_combined.md](./PLAN_E13_combined.md) — DSCNN + Sensor 동시 제거
-- 종합 보고서: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md) §5 E1–E4 주요 그룹
+- 종합 보고서: [FULL_REPORT.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md) §5 E1–E4 주요 그룹

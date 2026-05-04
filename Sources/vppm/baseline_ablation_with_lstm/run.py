@@ -5,7 +5,7 @@ Feature Ablation 실험 실행기 — PLAN.md 참고.
 기존 VPPM 학습/평가 파이프라인을 동일 하이퍼파라미터로 돌린다.
 
 산출물 구조 (baseline `pipeline_outputs/{models,results,features}` 레이아웃을 각 실험 폴더 내부에서 그대로 재사용):
-    Sources/pipeline_outputs/ablation/<exp_id>_no_<group>/
+    Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/<exp_id>_no_<group>/
         experiment_meta.json
         models/
             vppm_{YS,UTS,UE,TE}_fold{0-4}.pt
@@ -18,9 +18,9 @@ Feature Ablation 실험 실행기 — PLAN.md 참고.
             normalization.json
 
 Usage:
-    ./venv/bin/python -m Sources.vppm.ablation.run --experiment E1
-    ./venv/bin/python -m Sources.vppm.ablation.run --all
-    ./venv/bin/python -m Sources.vppm.ablation.run --experiment E3 --quick  # smoke test
+    ./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E1
+    ./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --all
+    ./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E3 --quick  # smoke test
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ from pathlib import Path
 
 import numpy as np
 
-# Sources/vppm/ablation/run.py → 프로젝트 루트는 parents[3]
+# Sources/vppm/baseline_ablation_with_lstm/run.py → 프로젝트 루트는 parents[3]
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from Sources.vppm.common import config
@@ -44,7 +44,7 @@ from Sources.vppm.baseline.evaluate import (
 )
 from Sources.vppm.baseline.train import train_all
 
-ABLATION_DIR = config.OUTPUT_DIR / "ablation"
+ABLATION_DIR = config.OUTPUT_DIR / "experiments" / "baseline_ablation_with_lstm"
 
 # 실험 정의: (exp_id, drop_group, 설명)
 EXPERIMENTS = {
@@ -251,7 +251,7 @@ def write_summary_md(all_runs: dict[str, dict]) -> None:
     lines = [
         "# VPPM Feature Ablation 결과 요약",
         "",
-        "> 자동 생성 — [PLAN.md](../../vppm/ablation/PLAN.md) 와 같이 볼 것.",
+        "> 자동 생성 — [PLAN.md](../../vppm/baseline_ablation_with_lstm/PLAN.md) 와 같이 볼 것.",
         "",
         "## RMSE (원본 스케일, 5-Fold CV 평균 ± 표준편차)",
         "",

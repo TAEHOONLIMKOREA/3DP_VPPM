@@ -39,7 +39,7 @@ services:
       - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
       - ../../Sources/pipeline_outputs/results:/workspace/Sources/pipeline_outputs/results:ro
       - ../../Sources/pipeline_outputs/experiments:/workspace/Sources/pipeline_outputs/experiments:ro
-      - ../../Sources/pipeline_outputs/ablation:/workspace/Sources/pipeline_outputs/ablation:rw
+      - ../../Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm:/workspace/Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm:rw
     environment:
       PYTHONPATH: /workspace
       HOME: /tmp
@@ -54,11 +54,11 @@ services:
         VENV_PY=/workspace/venv/bin/python
         [ -x "$$VENV_PY" ] || { echo "[hidden_sweep] FATAL: venv 미마운트 (host venv 가 ../../venv 에 있어야 함)" >&2; exit 1; }
         [ -f /workspace/Sources/pipeline_outputs/features/all_features.npz ] || { echo "[hidden_sweep] FATAL: all_features.npz 없음 — 먼저 baseline feature 추출 필요" >&2; exit 1; }
-        [ -d /workspace/Sources/pipeline_outputs/ablation ] || { echo "[hidden_sweep] FATAL: ablation 디렉터리 미마운트" >&2; exit 1; }
-        if ! touch /workspace/Sources/pipeline_outputs/ablation/.write_test 2>/dev/null; then
+        [ -d /workspace/Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm ] || { echo "[hidden_sweep] FATAL: ablation 디렉터리 미마운트" >&2; exit 1; }
+        if ! touch /workspace/Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/.write_test 2>/dev/null; then
           echo "[hidden_sweep] FATAL: ablation 쓰기 권한 없음 — UID_GID 확인 (.env)" >&2; exit 1
         fi
-        rm -f /workspace/Sources/pipeline_outputs/ablation/.write_test
+        rm -f /workspace/Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/.write_test
         $$VENV_PY -c "import torch,sys;print(f'[hidden_sweep] py={sys.version.split()[0]} torch={torch.__version__} cuda={torch.cuda.is_available()} devs={torch.cuda.device_count()}')"
 
         # HIDDEN_SWEEP_HIDDEN=all → --all, 그 외엔 --hidden <N>
@@ -68,4 +68,4 @@ services:
           MODE_ARGS="--hidden $${HIDDEN_SWEEP_HIDDEN}"
         fi
         echo "[hidden_sweep] running: $$MODE_ARGS $${HIDDEN_SWEEP_EXTRA:-}"
-        exec $$VENV_PY -m Sources.vppm.ablation.run_hidden_sweep $$MODE_ARGS $${HIDDEN_SWEEP_EXTRA:-}
+        exec $$VENV_PY -m Sources.vppm.baseline_ablation_with_lstm.run_hidden_sweep $$MODE_ARGS $${HIDDEN_SWEEP_EXTRA:-}

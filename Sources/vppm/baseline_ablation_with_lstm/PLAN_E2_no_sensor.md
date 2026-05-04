@@ -14,7 +14,7 @@
 | **제거 그룹** | G2 Temporal Sensor (7 채널) |
 | **제거 피처 idx** | 11, 12, 13, 14, 15, 16, 17 |
 | **사용 피처 수** | 21 → **14** |
-| **출력 디렉터리** | `Sources/pipeline_outputs/ablation/E2_no_sensor/` |
+| **출력 디렉터리** | `Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E2_no_sensor/` |
 
 ### 1.1 제거되는 7 개 Sensor 채널
 
@@ -57,8 +57,8 @@
 **호스트:**
 
 ```bash
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E2
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E2 --quick
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E2
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E2 --quick
 ```
 
 **도커:**
@@ -72,7 +72,7 @@ cd docker/ablation/sensor
 ### 3.3 산출물
 
 ```
-Sources/pipeline_outputs/ablation/E2_no_sensor/
+Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E2_no_sensor/
 ├── experiment_meta.json
 ├── features/normalization.json
 ├── models/{vppm_*.pt, training_log.json}
@@ -116,8 +116,8 @@ Sources/pipeline_outputs/ablation/E2_no_sensor/
 
 > v1 분해는 G4 placeholder baseline 기준이라 무효. v2 에서는 다음 명령으로 재생성 필요:
 > ```bash
-> ./venv/bin/python -m Sources.vppm.ablation.analyze_per_build --experiment E2
-> # → Sources/pipeline_outputs/ablation/E2_no_sensor/per_build_analysis.md
+> ./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.analyze_per_build --experiment E2
+> # → Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E2_no_sensor/per_build_analysis.md
 > ```
 
 가설:
@@ -141,4 +141,4 @@ Sources/pipeline_outputs/ablation/E2_no_sensor/
 - 공통 설정: [PLAN.md](./PLAN.md)
 - 센서 세부: [PLAN_sensor_subablation.md](./PLAN_sensor_subablation.md) (E14–E22)
 - 조합: [PLAN_E13_combined.md](./PLAN_E13_combined.md) (E1 × E2)
-- 종합 보고서: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md) §5
+- 종합 보고서: [FULL_REPORT.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md) §5

@@ -1,6 +1,6 @@
 # VPPM Hidden-Dim Sweep 결과 요약
 
-> 자동 생성 — [PLAN_hidden_dim_sweep.md](../../vppm/ablation/PLAN_hidden_dim_sweep.md) 와 같이 볼 것.
+> 자동 생성 — [PLAN_hidden_dim_sweep.md](../../vppm/baseline_ablation_with_lstm/PLAN_hidden_dim_sweep.md) 와 같이 볼 것.
 
 ## RMSE (원본 스케일, 5-Fold CV 평균 ± 표준편차)
 

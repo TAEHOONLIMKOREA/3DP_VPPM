@@ -14,7 +14,7 @@
 | **제거 그룹** | G3 CAD / 좌표 (3 채널) |
 | **제거 피처 idx** | 0, 1, 2 |
 | **사용 피처 수** | 21 → **18** |
-| **출력 디렉터리** | `Sources/pipeline_outputs/ablation/E3_no_cad/` |
+| **출력 디렉터리** | `Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E3_no_cad/` |
 
 ### 1.1 제거되는 3 개 CAD 채널
 
@@ -51,8 +51,8 @@
 **호스트:**
 
 ```bash
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E3
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E3 --quick
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E3
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E3 --quick
 ```
 
 **도커:**
@@ -66,7 +66,7 @@ cd docker/ablation/cad
 ### 3.3 산출물
 
 ```
-Sources/pipeline_outputs/ablation/E3_no_cad/
+Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E3_no_cad/
 ├── experiment_meta.json
 ├── features/normalization.json
 ├── models/{vppm_*.pt, training_log.json}
@@ -116,8 +116,8 @@ v2 baseline 이 강해진 만큼 CAD 의 절대 기여도 더 명확:
 별도 실행 필요:
 
 ```bash
-./venv/bin/python -m Sources.vppm.ablation.analyze_per_build --experiment E3
-# → Sources/pipeline_outputs/ablation/E3_no_cad/per_build_analysis.md
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.analyze_per_build --experiment E3
+# → Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E3_no_cad/per_build_analysis.md
 ```
 
 ### 5.1 예상 패턴 (미실행)
@@ -142,5 +142,5 @@ v2 baseline 이 강해진 만큼 CAD 의 절대 기여도 더 명확:
 ## 7. 연관 문서
 
 - 공통 설정: [PLAN.md](./PLAN.md)
-- 종합 보고서: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md) §5
+- 종합 보고서: [FULL_REPORT.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md) §5
 - 후속 추천: per-build 분해 실행 후 B1.3 결과 확인

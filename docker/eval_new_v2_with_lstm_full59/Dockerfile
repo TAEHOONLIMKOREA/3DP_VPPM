@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1.6
 #
-# VPPM Feature Ablation 공용 이미지.
-# 호스트 venv (torch 2.11.0 + cuda) 를 bind mount 하여 사용 → pip install 불필요.
-# 4개 그룹(dscnn/sensor/cad/scan) compose 가 같은 이미지를 공유.
+# eval_new_v2_with_lstm_full59 이미지.
+# 학습된 LSTM_FULL59 (vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1) 을
+# 신규 build (2023-03-15 AMMTO Spatial Variation Baseline) 에 적용해 part-level 평가.
+# 호스트 venv (torch + cuda) 를 bind mount 하여 사용 — pip install 불필요.
 #
 FROM ubuntu:22.04
 
@@ -20,5 +21,5 @@ WORKDIR /workspace
 COPY Sources/ ./Sources/
 COPY CLAUDE.md ./
 
-# 기본 명령: usage 출력 (각 group compose 가 --experiment E* 로 override)
-CMD ["/workspace/venv/bin/python", "-m", "Sources.vppm.baseline_ablation_with_lstm.run", "--help"]
+# 기본 명령: usage 출력 (compose command: 가 override)
+CMD ["/workspace/venv/bin/python", "-m", "Sources.vppm.eval_new_v2_with_lstm_full59.run", "--help"]

@@ -121,7 +121,7 @@ FEATURE_GROUPS.update(FEATURE_GROUPS_DSCNN_SUB)
 ### 3.2 run.py 확장
 
 ```python
-# Sources/vppm/ablation/run.py — EXPERIMENTS 에 추가
+# Sources/vppm/baseline_ablation_with_lstm/run.py — EXPERIMENTS 에 추가
 EXPERIMENTS.update({
     "E5":  ("dscnn_powder",             "No-Powder — 미용융 분말 제거"),
     "E6":  ("dscnn_printed",            "No-Printed — 정상 영역 제거"),
@@ -142,9 +142,9 @@ EXPERIMENTS.update({
 
 ```bash
 for E in E5 E6 E7 E8 E9 E10 E11 E12 E23 E24; do
-  ./venv/bin/python -m Sources.vppm.ablation.run --experiment $E
+  ./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment $E
 done
-./venv/bin/python -m Sources.vppm.ablation.run --rebuild-summary
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --rebuild-summary
 ```
 
 **도커 병렬 (GPU 4장 × 3배치):**
@@ -170,7 +170,7 @@ cd docker/ablation/dscnn_sub
 ## 4. 결과 산출물
 
 ```
-Sources/pipeline_outputs/ablation/
+Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/
 ├── E5_no_dscnn_powder/
 ├── E6_no_dscnn_printed/
 ├── E7_no_dscnn_recoater_streaking/
@@ -206,7 +206,7 @@ Sources/pipeline_outputs/ablation/
 
 → v2 결과 전체 표는 §9 참조.
 
-자동 생성 스크립트: `Sources/vppm/ablation/build_dscnn_sub_summary.py` 를 신규로 만들거나, 기존
+자동 생성 스크립트: `Sources/vppm/baseline_ablation_with_lstm/build_dscnn_sub_summary.py` 를 신규로 만들거나, 기존
 `run.py --rebuild-summary` 를 확장해 실험 필터(prefix) 를 받도록 수정.
 
 ---
@@ -343,4 +343,4 @@ v1 (E5–E8 만 완료) 에서 추정된 두 결론:
 - 센서 서브 실험: [PLAN_sensor_subablation.md](./PLAN_sensor_subablation.md) — 유사한 2단계 설계
 - 조합 실험: [PLAN_E13_combined.md](./PLAN_E13_combined.md) — DSCNN × Sensor 상호작용
 - 공통 설정: [PLAN.md](./PLAN.md)
-- 종합 보고서: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md) §5 (DSCNN 영향), §13 (후속 로드맵 2순위)
+- 종합 보고서: [FULL_REPORT.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md) §5 (DSCNN 영향), §13 (후속 로드맵 2순위)

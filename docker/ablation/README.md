@@ -1,6 +1,6 @@
 # Docker — VPPM Feature Ablation
 
-[Sources/vppm/ablation/PLAN.md](../../Sources/vppm/ablation/PLAN.md) 의 30 ablation 실험을 **단일 docker-compose 파일** 로 통합 실행한다. wrapper 스크립트 없이 `docker compose` 명령만으로 모든 시나리오 커버.
+[Sources/vppm/baseline_ablation_with_lstm/PLAN.md](../../Sources/vppm/baseline_ablation_with_lstm/PLAN.md) 의 30 ablation 실험을 **단일 docker-compose 파일** 로 통합 실행한다. wrapper 스크립트 없이 `docker compose` 명령만으로 모든 시나리오 커버.
 
 ## 전제 조건
 

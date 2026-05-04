@@ -14,7 +14,7 @@
 | **제거 그룹** | G4 Scan / Laser (3 채널) |
 | **제거 피처 idx** | 18, 19, 20 |
 | **사용 피처 수** | 21 → **18** |
-| **출력 디렉터리** | `Sources/pipeline_outputs/ablation/E4_no_scan/` |
+| **출력 디렉터리** | `Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E4_no_scan/` |
 
 ### 1.1 제거되는 3 개 Scan 채널
 
@@ -52,8 +52,8 @@
 **호스트:**
 
 ```bash
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E4
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E4 --quick
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E4
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E4 --quick
 ```
 
 **도커:**
@@ -67,7 +67,7 @@ cd docker/ablation/scan
 ### 3.3 산출물
 
 ```
-Sources/pipeline_outputs/ablation/E4_no_scan/
+Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E4_no_scan/
 ├── experiment_meta.json
 ├── features/normalization.json
 ├── models/{vppm_*.pt, training_log.json}
@@ -79,14 +79,14 @@ Sources/pipeline_outputs/ablation/E4_no_scan/
 
 ## 4. 실제 결과
 
-> Phase 5 (전체 ablation 재실행) 완료 후 [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md) 와
-> [summary.md](../../pipeline_outputs/ablation/summary.md) 에서 v2 결과 확인.
+> Phase 5 (전체 ablation 재실행) 완료 후 [FULL_REPORT.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md) 와
+> [summary.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/summary.md) 에서 v2 결과 확인.
 
 ### 4.1 빌드별 잔차 분해
 
 ```bash
-./venv/bin/python -m Sources.vppm.ablation.analyze_per_build --experiment E4
-# → Sources/pipeline_outputs/ablation/E4_no_scan/per_build_analysis.md
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.analyze_per_build --experiment E4
+# → Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E4_no_scan/per_build_analysis.md
 ```
 
 빌드별 패턴 가설:
@@ -99,6 +99,6 @@ Sources/pipeline_outputs/ablation/E4_no_scan/
 ## 5. 연관 문서
 
 - 공통 설정: [PLAN.md](./PLAN.md)
-- 종합 보고서: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md)
+- 종합 보고서: [FULL_REPORT.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md)
 - 스캔 서브 채널 분해: [docker/ablation/scan_sub/README.md](../../../docker/ablation/scan_sub/README.md)
   (E31~E33 — `laser_module` / `return_delay` / `stripe_boundaries` 단독 영향)

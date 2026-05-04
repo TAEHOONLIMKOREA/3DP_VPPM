@@ -88,7 +88,7 @@ FEATURE_GROUPS.update(FEATURE_GROUPS_SENSOR_SUB)
 ### 3.2 run.py 확장
 
 ```python
-# Sources/vppm/ablation/run.py — EXPERIMENTS 에 추가
+# Sources/vppm/baseline_ablation_with_lstm/run.py — EXPERIMENTS 에 추가
 EXPERIMENTS.update({
     "E14": ("sensor_print_time",  "No-PrintTime — 레이어 프린트 시간 제거"),
     "E15": ("sensor_top_flow",    "No-TopFlow — 상단 가스 유량 제거"),
@@ -107,9 +107,9 @@ EXPERIMENTS.update({
 ```bash
 # 순차 실행 (GPU 1대 가정)
 for E in E14 E15 E16 E17 E18 E19 E20 E21 E22; do
-  ./venv/bin/python -m Sources.vppm.ablation.run --experiment $E
+  ./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment $E
 done
-./venv/bin/python -m Sources.vppm.ablation.run --rebuild-summary
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --rebuild-summary
 ```
 
 혹은 `--all-sensor-sub` 같은 편의 플래그 추가 (optional).
@@ -130,14 +130,14 @@ done
 ```
 
 `run.py` 에 `--summary-style sensor_sub` 같은 필터 옵션을 추가하거나, 별도 스크립트
-`Sources/vppm/ablation/build_sensor_sub_summary.py` 신규 작성.
+`Sources/vppm/baseline_ablation_with_lstm/build_sensor_sub_summary.py` 신규 작성.
 
 ---
 
 ## 4. 결과 산출물
 
 ```
-Sources/pipeline_outputs/ablation/
+Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/
 ├── E14_no_sensor_print_time/
 ├── E15_no_sensor_top_flow/
 ├── E16_no_sensor_bottom_flow/

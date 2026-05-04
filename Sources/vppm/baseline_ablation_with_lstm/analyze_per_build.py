@@ -4,8 +4,8 @@
 baseline(21-feat) 을 비교해 빌드(B1.1~B1.5) 단위 RMSE 를 보고한다.
 
 Usage:
-    ./venv/bin/python -m Sources.vppm.ablation.analyze_per_build --experiment E2
-    ./venv/bin/python -m Sources.vppm.ablation.analyze_per_build --experiment E13
+    ./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.analyze_per_build --experiment E2
+    ./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.analyze_per_build --experiment E13
 
 산출: ablation/<exp_id>_no_<group>/per_build_analysis.md
 """
@@ -27,7 +27,7 @@ from Sources.vppm.common.model import VPPM
 BUILD_LABELS = {0: "B1.1", 1: "B1.2", 2: "B1.3", 3: "B1.4", 4: "B1.5"}
 
 # ablation/run.py 의 EXPERIMENTS 와 동기화해서 가져옴 (drop_group 만 필요)
-from Sources.vppm.ablation.run import EXPERIMENTS
+from Sources.vppm.baseline_ablation_with_lstm.run import EXPERIMENTS
 
 
 def load_raw() -> dict:
@@ -224,7 +224,7 @@ def main():
     rec_base = collect_per_sample(ds_base, models_base, n_feats=21, device=device)
 
     # ----- Ablation 실험 -----
-    exp_dir = config.OUTPUT_DIR / "ablation" / f"{args.experiment}_no_{drop_group}"
+    exp_dir = config.OUTPUT_DIR / "experiments" / "baseline_ablation_with_lstm" / f"{args.experiment}_no_{drop_group}"
     models_abl = exp_dir / "models"
     print(f"\n[2/2] {args.experiment} ({drop_group} 제거) 평가…")
     drop_idx = set(config.FEATURE_GROUPS[drop_group])

@@ -1,6 +1,6 @@
 # Docker — VPPM Hidden-Dim Sweep
 
-[Sources/vppm/ablation/PLAN_hidden_dim_sweep.md](../../Sources/vppm/ablation/PLAN_hidden_dim_sweep.md) 의 hidden_dim sweep 실험을 단일 docker-compose 로 실행.
+[Sources/vppm/baseline_ablation_with_lstm/PLAN_hidden_dim_sweep.md](../../Sources/vppm/baseline_ablation_with_lstm/PLAN_hidden_dim_sweep.md) 의 hidden_dim sweep 실험을 단일 docker-compose 로 실행.
 
 베이스라인 VPPM (`Linear(21 → hidden) → ReLU → Dropout → Linear(hidden → 1)`) 에서 hidden_dim 만 바꿔가며 model capacity 의 RMSE 영향을 측정한다.
 
@@ -60,12 +60,12 @@ HIDDEN_SWEEP_EXTRA=--rebuild-summary docker compose up
 
 ## 산출물
 
-- 각 hidden run: `Sources/pipeline_outputs/ablation/H{1,2,3}_hidden_{1,64,256}/`
+- 각 hidden run: `Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/H{1,2,3}_hidden_{1,64,256}/`
   - `models/` — fold 별 best 모델
   - `results/` — `metrics_raw.json`, 산점도/상관 plot
   - `features/normalization.json`
   - `experiment_meta.json`
-- 통합 summary: `Sources/pipeline_outputs/ablation/hidden_sweep_summary.md` (E0 baseline 자동 인용)
+- 통합 summary: `Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/hidden_sweep_summary.md` (E0 baseline 자동 인용)
 
 ## 예상 소요 시간
 

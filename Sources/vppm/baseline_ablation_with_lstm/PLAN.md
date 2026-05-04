@@ -6,7 +6,7 @@
 >
 > **기준 모델 (E0 Baseline)**: 21-feat, 5-Fold CV — [experiments/vppm_baseline/results/metrics_raw.json](../../pipeline_outputs/experiments/vppm_baseline/results/metrics_raw.json)
 >
-> **종합 결과 보고서 (v2)**: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md) — 배경 / 27 실험 결과 / 그룹별 해석 / 후속 로드맵.
+> **종합 결과 보고서 (v2)**: [FULL_REPORT.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md) — 배경 / 27 실험 결과 / 그룹별 해석 / 후속 로드맵.
 
 ---
 
@@ -16,7 +16,7 @@
 인덱스 역할만 담당한다.
 
 > **모든 27 실험 v2 완료 (2026-04-28)** — G4 스캔 피처 실 구현 적용 후 재실행. 종합 결과는
-> [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md), 자동 표는 [summary.md](../../pipeline_outputs/ablation/summary.md).
+> [FULL_REPORT.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md), 자동 표는 [summary.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/summary.md).
 
 ### 1.1 주요 그룹 ablation (E1–E4)
 
@@ -115,7 +115,7 @@
 
 ### 2.1 피처별 상세 정보
 
-21 개 피처 전체 표는 [FULL_REPORT.md §2.2](../../pipeline_outputs/ablation/FULL_REPORT.md) 참조.
+21 개 피처 전체 표는 [FULL_REPORT.md §2.2](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md) 참조.
 
 ---
 
@@ -150,7 +150,7 @@
 각 실험은 4 속성 × 5 folds = **20 모델**을 생성한다. 저장 레이아웃:
 
 ```
-Sources/pipeline_outputs/ablation/
+Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/
 ├── E{id}_no_{group}/
 │   ├── experiment_meta.json       # exp_id, drop_group, dropped_idx, n_feats, n_samples
 │   ├── features/
@@ -207,8 +207,8 @@ Baseline RMSE 가 내재오차의 수 배 — UE 는 7.4× 로 가장 큰 격차
 일부 그룹은 특정 빌드에서만 유의미할 수 있다 (B1.4 스패터, B1.5 리코터 손상 등). 빌드별 분해:
 
 ```bash
-./venv/bin/python -m Sources.vppm.ablation.analyze_per_build --experiment E{id}
-# → Sources/pipeline_outputs/ablation/E{id}_no_{group}/per_build_analysis.md
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.analyze_per_build --experiment E{id}
+# → Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/E{id}_no_{group}/per_build_analysis.md
 ```
 
 ---
@@ -234,14 +234,14 @@ Baseline RMSE 가 내재오차의 수 배 — UE 는 7.4× 로 가장 큰 격차
 | 4 | Hidden size sweep           | E13 (n=6) 에서 hidden=128 적정성   | 미계획 |
 | 5 | Seed 반복                   | DSCNN/Sensor 단일-channel noise 통계 확정 | 미계획 |
 
-상세는 [FULL_REPORT.md §7](../../pipeline_outputs/ablation/FULL_REPORT.md) 참조.
+상세는 [FULL_REPORT.md §7](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md) 참조.
 
 ---
 
 ## 8. 파일 구조 참고
 
 ```
-Sources/vppm/ablation/
+Sources/vppm/baseline_ablation_with_lstm/
 ├── PLAN.md                              # (이 파일) — 개요·인덱스·공통 설정
 ├── PLAN_E1_no_dscnn.md                  # E1 계획 + 결과
 ├── PLAN_E2_no_sensor.md                 # E2 계획 + 결과

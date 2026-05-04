@@ -65,7 +65,7 @@ FEATURE_GROUPS_COMBO = {
 `EXPERIMENTS` 딕셔너리에 E13 엔트리 추가:
 
 ```python
-# Sources/vppm/ablation/run.py
+# Sources/vppm/baseline_ablation_with_lstm/run.py
 EXPERIMENTS = {
     "E1":  ("dscnn",        "No-DSCNN — DSCNN 8피처 제거"),
     "E2":  ("sensor",       "No-Sensor — Temporal 센서 7피처 제거"),
@@ -87,8 +87,8 @@ FEATURE_GROUPS.update(FEATURE_GROUPS_COMBO)
 ### 2.3 실행
 
 ```bash
-./venv/bin/python -m Sources.vppm.ablation.run --experiment E13
-./venv/bin/python -m Sources.vppm.ablation.run --rebuild-summary  # summary.md 갱신
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --experiment E13
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run --rebuild-summary  # summary.md 갱신
 ```
 
 ### 2.4 빌드별 분석 확장
@@ -100,7 +100,7 @@ FEATURE_GROUPS.update(FEATURE_GROUPS_COMBO)
 ## 3. 결과 산출물
 
 ```
-Sources/pipeline_outputs/ablation/
+Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/
 ├── E13_no_dscnn_sensor/
 │   ├── experiment_meta.json
 │   ├── models/          # vppm_{YS,UTS,UE,TE}_fold{0-4}.pt (n_feats=6)

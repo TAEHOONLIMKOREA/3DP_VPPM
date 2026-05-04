@@ -159,8 +159,8 @@ Sources/vppm/
 │   ├── view_stacks_example.py
 │   ├── view_per_build.py
 │   └── export_crop_png.py
-└── ablation/
-    └── run.py                      # 피처 그룹별 ablation 실험
+└── baseline_ablation_with_lstm/
+    └── run.py                      # 피처 그룹별 ablation 실험 (21-feat MLP)
 ```
 
 ★ 표시: 본 README 에서 다루는 데이터 파이프라인 핵심 모듈.

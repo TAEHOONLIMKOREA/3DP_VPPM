@@ -2,7 +2,7 @@
 #
 # VPPM Hidden-Dim Sweep 전용 이미지.
 # 호스트 venv (torch 2.11.0 + cuda) 를 bind mount 하여 사용 → pip install 불필요.
-# entry point: Sources.vppm.ablation.run_hidden_sweep
+# entry point: Sources.vppm.baseline_ablation_with_lstm.run_hidden_sweep
 #
 FROM ubuntu:22.04
 
@@ -21,4 +21,4 @@ COPY Sources/ ./Sources/
 COPY CLAUDE.md ./
 
 # 기본 명령: usage 출력 (compose 가 --hidden / --all 등으로 override)
-CMD ["/workspace/venv/bin/python", "-m", "Sources.vppm.ablation.run_hidden_sweep", "--help"]
+CMD ["/workspace/venv/bin/python", "-m", "Sources.vppm.baseline_ablation_with_lstm.run_hidden_sweep", "--help"]

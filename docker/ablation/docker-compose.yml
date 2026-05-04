@@ -44,7 +44,7 @@ x-base: &base
     - ../../venv:/workspace/venv:ro
     - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
     - ../../Sources/pipeline_outputs/results:/workspace/Sources/pipeline_outputs/results:ro
-    - ../../Sources/pipeline_outputs/ablation:/workspace/Sources/pipeline_outputs/ablation:rw
+    - ../../Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm:/workspace/Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm:rw
   shm_size: "2gb"
   working_dir: /workspace
 
@@ -61,13 +61,13 @@ x-cmd: &cmd
     VENV_PY=/workspace/venv/bin/python
     [ -x "$$VENV_PY" ] || { echo "[ablation] FATAL: venv 미마운트" >&2; exit 1; }
     [ -f /workspace/Sources/pipeline_outputs/features/all_features.npz ] || { echo "[ablation] FATAL: all_features.npz 없음" >&2; exit 1; }
-    [ -d /workspace/Sources/pipeline_outputs/ablation ] || { echo "[ablation] FATAL: ablation 디렉터리 미마운트" >&2; exit 1; }
-    if ! touch /workspace/Sources/pipeline_outputs/ablation/.write_test 2>/dev/null; then
+    [ -d /workspace/Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm ] || { echo "[ablation] FATAL: ablation 디렉터리 미마운트" >&2; exit 1; }
+    if ! touch /workspace/Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/.write_test 2>/dev/null; then
       echo "[ablation] FATAL: ablation 쓰기 권한 없음 — UID 확인" >&2; exit 1
     fi
-    rm -f /workspace/Sources/pipeline_outputs/ablation/.write_test
+    rm -f /workspace/Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/.write_test
     $$VENV_PY -c "import torch,sys;print(f'[$$EXPERIMENT_ID] py={sys.version.split()[0]} torch={torch.__version__} cuda={torch.cuda.is_available()} devs={torch.cuda.device_count()}')"
-    exec $$VENV_PY -m Sources.vppm.ablation.run --experiment $$EXPERIMENT_ID --skip-summary $${ABLATION_EXTRA:-}
+    exec $$VENV_PY -m Sources.vppm.baseline_ablation_with_lstm.run --experiment $$EXPERIMENT_ID --skip-summary $${ABLATION_EXTRA:-}
 
 # ────────────────────────────────────────────────────────────────────
 # 30 ablation services + summary
@@ -442,6 +442,6 @@ services:
         set -e
         VENV_PY=/workspace/venv/bin/python
         echo "[summary] rebuilding ablation/summary.md from disk"
-        $$VENV_PY -m Sources.vppm.ablation.run --rebuild-summary
+        $$VENV_PY -m Sources.vppm.baseline_ablation_with_lstm.run --rebuild-summary
         echo "[summary] Done."
     profiles: ["summary"]

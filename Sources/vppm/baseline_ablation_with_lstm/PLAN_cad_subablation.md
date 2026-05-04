@@ -88,7 +88,7 @@ FEATURE_GROUPS.update(FEATURE_GROUPS_CAD_SUB)
 ### 3.2 run.py 확장 (이미 반영)
 
 ```python
-# Sources/vppm/ablation/run.py — EXPERIMENTS dict 끝
+# Sources/vppm/baseline_ablation_with_lstm/run.py — EXPERIMENTS dict 끝
 "E34": ("cad_distance_edge",     "No-DistEdge — distance_from_edge 단독 제거"),
 "E35": ("cad_distance_overhang", "No-DistOverhang — distance_from_overhang 단독 제거"),
 "E36": ("cad_build_height",      "No-BuildHeight — build_height 단독 제거"),
@@ -113,7 +113,7 @@ ABLATION_EXTRA=--quick docker compose --profile E34 up
 ## 4. 결과 산출물
 
 ```
-Sources/pipeline_outputs/ablation/
+Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/
 ├── E34_no_cad_distance_edge/
 ├── E35_no_cad_distance_overhang/
 ├── E36_no_cad_build_height/

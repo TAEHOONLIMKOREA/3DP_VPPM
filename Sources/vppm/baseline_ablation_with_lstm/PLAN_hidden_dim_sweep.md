@@ -63,12 +63,12 @@ baseline 모델의 hidden 차원은 [config.py:HIDDEN_DIM = 128](../common/confi
 
 - `config.py:HIDDEN_DIM` 을 모듈 인자로 override 할 수 있게 변경 (CLI 인자 → train_all 에 전달).
 - `Sources/vppm/baseline/model.py:VPPM` 의 `hidden_dim` 인자가 1/64/256 모두에서 정상 작동하는지 확인 (현재도 가능할 가능성 큼).
-- `Sources/vppm/ablation/run_hidden_sweep.py` 신설 — `EXPERIMENTS` dict 와 동일 패턴, 단 drop_group 대신 `hidden_dim` 인자 사용.
+- `Sources/vppm/baseline_ablation_with_lstm/run_hidden_sweep.py` 신설 — `EXPERIMENTS` dict 와 동일 패턴, 단 drop_group 대신 `hidden_dim` 인자 사용.
 
 ### 4.2 산출물 디렉토리
 
 ```
-Sources/pipeline_outputs/ablation/
+Sources/pipeline_outputs/experiments/baseline_ablation_with_lstm/
 ├── H1_hidden_1/                      # 극단 bottleneck
 ├── H2_hidden_64/
 └── H3_hidden_256/
@@ -90,15 +90,15 @@ Sources/pipeline_outputs/ablation/
 
 ```bash
 # 단일
-./venv/bin/python -m Sources.vppm.ablation.run_hidden_sweep --hidden 1
-./venv/bin/python -m Sources.vppm.ablation.run_hidden_sweep --hidden 64
-./venv/bin/python -m Sources.vppm.ablation.run_hidden_sweep --hidden 256
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run_hidden_sweep --hidden 1
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run_hidden_sweep --hidden 64
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run_hidden_sweep --hidden 256
 
 # 전체 sweep (H1, H2, H3 순차)
-./venv/bin/python -m Sources.vppm.ablation.run_hidden_sweep --all
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run_hidden_sweep --all
 
 # smoke test (1 fold, max_epoch=50)
-./venv/bin/python -m Sources.vppm.ablation.run_hidden_sweep --hidden 64 --quick
+./venv/bin/python -m Sources.vppm.baseline_ablation_with_lstm.run_hidden_sweep --hidden 64 --quick
 ```
 
 ---
@@ -182,6 +182,6 @@ Sources/pipeline_outputs/ablation/
 ## 9. 연관 문서
 
 - 공통 설정 / 인덱스: [PLAN.md](./PLAN.md)
-- 피처 ablation 결과: [FULL_REPORT.md](../../pipeline_outputs/ablation/FULL_REPORT.md)
+- 피처 ablation 결과: [FULL_REPORT.md](../../pipeline_outputs/experiments/baseline_ablation_with_lstm/FULL_REPORT.md)
 - 1D CNN 후속 활용: [Sources/vppm/1dcnn/PLAN.md](../1dcnn/PLAN.md) §6 학습 설정
 - Baseline 모델 정의: [Sources/vppm/baseline/model.py](../baseline/model.py)

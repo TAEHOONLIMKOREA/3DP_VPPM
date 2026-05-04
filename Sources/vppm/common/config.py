@@ -123,7 +123,7 @@ DIST_OVERHANG_SATURATION_LAYERS = 71
 SAMPLE_OVERLAP_THRESHOLD = 0.10  # 10%
 
 # ============================================================
-# Feature Ablation 그룹 (Sources/vppm/ablation/PLAN.md)
+# Feature Ablation 그룹 (Sources/vppm/baseline_ablation_with_lstm/PLAN.md)
 # ============================================================
 # 0-based 인덱스. origin/features.py 의 FEATURE_NAMES 와 일치해야 함.
 FEATURE_GROUPS = {
@@ -444,3 +444,45 @@ LSTM_FULL59_CACHE_SCAN_DIR   = LSTM_FULL86_CACHE_SCAN_DIR          # fullstack �
 LSTM_ABLATION_EXPERIMENT_BASE_DIR = OUTPUT_DIR / "experiments" / "lstm_ablation"
 LSTM_ABLATION_E1_DIR              = LSTM_ABLATION_EXPERIMENT_BASE_DIR / "E1_no_v0"
 LSTM_ABLATION_E2_DIR              = LSTM_ABLATION_EXPERIMENT_BASE_DIR / "E2_no_cameras"
+
+# ============================================================
+# Eval-only: [new_v2] (Peregrine v2023-10) 데이터셋에 대한 part-level 평가
+# (Sources/vppm/eval_new_v2_with_lstm_full59/)
+#
+# 학습된 LSTM_FULL59 모델 (vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1) 을
+# 신규 build "2023-03-15 AMMTO Spatial Variation Baseline.hdf5" 에 적용.
+# 이 build 는 sample_ids 가 사실상 비어있고 GT 가 parts/test_results 에만 있어서
+# (UE 부재, YS/UTS/TE 만), 별도 part-keyed feature/cache pipeline 으로 신규 빌드 후
+# 모델 inference → part-level mean → GT 비교를 수행한다.
+# ============================================================
+NEW_V2_HDF5_FILE = "2023-03-15 AMMTO Spatial Variation Baseline.hdf5"
+
+def new_v2_hdf5_path() -> Path:
+    return HDF5_DIR_NEW_V2 / NEW_V2_HDF5_FILE
+
+# 신규 build_id (캐시 파일명 접미사). BUILDS dict 에는 추가하지 않음 — 학습 파이프라인
+# (5빌드 baseline) 와 분리.
+NEW_V2_BUILD_ID = "AMMTO_v2"
+
+# part-based SV 유효 기준: sample overlap 안 봄. CAD overlap (part_ids>0) 만 본다.
+NEW_V2_CAD_OVERLAP_THRESHOLD = 0.10                                # SV xy 영역 안 part_ids>0 픽셀 비율 ≥ 10%
+
+# 산출물 경로
+NEW_V2_EVAL_EXPERIMENT_DIR = OUTPUT_DIR / "experiments" / "eval_new_v2_with_lstm_full59"
+NEW_V2_EVAL_CACHE_DIR      = NEW_V2_EVAL_EXPERIMENT_DIR / "cache"
+NEW_V2_EVAL_FEATURES_DIR   = NEW_V2_EVAL_EXPERIMENT_DIR / "features"
+NEW_V2_EVAL_RESULTS_DIR    = NEW_V2_EVAL_EXPERIMENT_DIR / "results"
+
+# 학습된 모델/정규화 통계 source (read-only 입력)
+NEW_V2_EVAL_TRAINED_MODELS_DIR    = LSTM_FULL59_MODELS_DIR
+NEW_V2_EVAL_TRAINED_NORM_PATH     = LSTM_FULL59_FEATURES_DIR / "normalization.json"
+NEW_V2_EVAL_MODEL_FILE_PREFIX     = "vppm_lstm_dual_img_16_dscnn_8_cad_8_scan_8_sensor_1"
+
+# new_v2 의 12 segmentation 채널 → DSCNN_FEATURE_MAP 의 8 paper class 매핑.
+# new_v2 class_names 순서: Powder, Printed, Recoater Hopping, Recoater Streaking,
+#   Incomplete Spreading, Swelling, Debris, Super-Elevation, Spatter, Misprint,
+#   Over Melting, Under Melting (12개)
+# baseline DSCNN_FEATURE_MAP 의 hdf5_class_id (0,1,3,5,6,7,8,10) 를 그대로 재사용.
+# 명칭 대응 (학습된 모델이 그대로 expect):
+#   0 Powder, 1 Printed, 3 Recoater Streaking, 5 Swelling≈Edge Swelling,
+#   6 Debris, 7 Super-Elevation, 8 Spatter≈Soot, 10 Over Melting≈Excessive Melting
