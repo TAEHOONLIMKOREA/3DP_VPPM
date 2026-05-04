@@ -1,0 +1,33 @@
+{
+  "exp_id": "E24",
+  "drop_group": "dscnn_normal",
+  "description": "No-DSCNNNormal \u2014 DSCNN normal 2\ucc44\ub110 \uc81c\uac70 (defect 6\uac1c\ub9cc \ub0a8\uae40)",
+  "dropped_feature_indices": [
+    3,
+    4
+  ],
+  "kept_feature_indices": [
+    0,
+    1,
+    2,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "n_feats": 19,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}

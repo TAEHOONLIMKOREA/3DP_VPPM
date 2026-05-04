@@ -29,7 +29,7 @@ services:
   vppm-lstm-dual-img-4-sensor-7:
     build:
       context: ../..
-      dockerfile: docker/ablation/Dockerfile
+      dockerfile: docker/baseline_ablation/Dockerfile
     image: vppm-ablation:gpu
     runtime: nvidia
     user: "${UID_GID:-1000:1000}"

@@ -1,9 +1,0 @@
-{
-  "exp_id": "H2",
-  "hidden_dim": 64,
-  "description": "Hidden=64 \u2014 plateau \uc9c4\uc785 \ud6c4\ubcf4",
-  "n_feats": 21,
-  "n_params": 1473,
-  "n_valid_supervoxels": 19313,
-  "n_unique_samples": 6373
-}

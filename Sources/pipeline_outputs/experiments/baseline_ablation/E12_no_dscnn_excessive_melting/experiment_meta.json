@@ -1,0 +1,33 @@
+{
+  "exp_id": "E12",
+  "drop_group": "dscnn_excessive_melting",
+  "description": "No-ExcessiveMelt \u2014 \uacfc\ub2e4 \uc6a9\uc735 \uc81c\uac70 (B1.2 Keyhole \ud575\uc2ec \ud6c4\ubcf4)",
+  "dropped_feature_indices": [
+    10
+  ],
+  "kept_feature_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "n_feats": 20,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}

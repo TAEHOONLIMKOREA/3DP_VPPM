@@ -123,7 +123,7 @@ DIST_OVERHANG_SATURATION_LAYERS = 71
 SAMPLE_OVERLAP_THRESHOLD = 0.10  # 10%
 
 # ============================================================
-# Feature Ablation 그룹 (Sources/vppm/baseline_ablation_with_lstm/PLAN.md)
+# Feature Ablation 그룹 (Sources/vppm/baseline_ablation/PLAN.md)
 # ============================================================
 # 0-based 인덱스. origin/features.py 의 FEATURE_NAMES 와 일치해야 함.
 FEATURE_GROUPS = {
@@ -183,7 +183,7 @@ FEATURE_GROUPS_CAD_SUB = {
 FEATURE_GROUPS.update(FEATURE_GROUPS_CAD_SUB)
 
 # ============================================================
-# VPPM-LSTM 확장 (Sources/vppm/lstm/PLAN.md)
+# VPPM-LSTM 확장 (Sources/vppm/lstm_single/PLAN.md)
 # ============================================================
 # Per-supervoxel 이미지 시퀀스 (가변 길이) → CNN per-frame → LSTM → 1-dim 임베딩
 # 21 baseline 피처에 concat → 22-dim → 기존 VPPM MLP
@@ -219,8 +219,8 @@ LSTM_NUM_WORKERS = 0             # in-memory 라 worker 불필요
 LSTM_GRAD_CLIP = 1.0
 LSTM_WEIGHT_DECAY = 0.0          # baseline 도 무 weight decay
 
-# 산출물 경로 — Sources/pipeline_outputs/experiments/vppm_lstm/
-LSTM_EXPERIMENT_DIR = OUTPUT_DIR / "experiments" / "vppm_lstm"
+# 산출물 경로 — Sources/pipeline_outputs/experiments/vppm_lstm_single/
+LSTM_EXPERIMENT_DIR = OUTPUT_DIR / "experiments" / "vppm_lstm_single"
 LSTM_CACHE_DIR = LSTM_EXPERIMENT_DIR / "cache"
 LSTM_MODELS_DIR = LSTM_EXPERIMENT_DIR / "models"
 LSTM_RESULTS_DIR = LSTM_EXPERIMENT_DIR / "results"
@@ -230,7 +230,7 @@ LSTM_FEATURES_DIR = LSTM_EXPERIMENT_DIR / "features"  # normalization.json 저�
 # VPPM-LSTM-Dual 확장 (Sources/vppm/lstm_dual/PLAN.md)
 # ============================================================
 # visible/0 + visible/1 두 채널 각각 CNN+LSTM 임베딩 (1-dim) → 21 + 1 + 1 = 23 features
-# visible/0 캐시는 기존 LSTM_CACHE_DIR (vppm_lstm/cache/) 재사용,
+# visible/0 캐시는 기존 LSTM_CACHE_DIR (vppm_lstm_single/cache/) 재사용,
 # visible/1 캐시만 lstm_dual 전용 디렉터리에 새로 빌드.
 
 LSTM_DUAL_CAMERA_CHANNEL_V1 = 1   # 추가 채널 (분말 도포 후)

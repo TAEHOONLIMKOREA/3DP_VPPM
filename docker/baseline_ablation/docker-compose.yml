@@ -1,0 +1,447 @@
+# VPPM Feature Ablation — 30 실험을 단일 compose 에 통합.
+#
+# 핵심 설계
+#  - 30 service (E1~E13, E14~E22, E23~E24, E31~E33, E34~E36) + 1 summary
+#  - YAML anchor 로 boilerplate 공유
+#  - profiles 로 그룹 / 실험 단위 실행
+#  - depends_on(service_completed_successfully) 로 GPU 4장 rotation batching
+#
+# 사용법 (profile 단위, 순차 실행 권장 — 각 `up` 은 해당 profile 의 모든 service 가 끝날 때까지 block)
+#
+#   cd docker/baseline_ablation
+#   docker compose --profile main up        # E1~E4   GPU 0~3 병렬
+#   docker compose --profile dscnn_sub up   # E5~E12, E23, E24  내부 batching 자동
+#   docker compose --profile combined up    # E13
+#   docker compose --profile sensor_sub up  # E14~E22 내부 batching
+#   docker compose --profile scan_sub up    # E31~E33
+#   docker compose --profile cad_sub up     # E34~E36
+#   docker compose --profile summary up     # 산출물 통합 summary.md 재생성
+#
+# 단일 실험만:
+#   docker compose --profile E7 up
+#
+# 백그라운드 실행 + 로그:
+#   docker compose --profile main up -d --build
+#   docker compose logs -f
+#   docker compose down
+#
+# 전제: Sources/pipeline_outputs/features/all_features.npz 존재.
+
+# ────────────────────────────────────────────────────────────────────
+# 공통 anchors
+# ────────────────────────────────────────────────────────────────────
+x-base: &base
+  build:
+    context: ../..
+    dockerfile: docker/baseline_ablation/Dockerfile
+  image: vppm-ablation:gpu
+  runtime: nvidia
+  user: "${UID_GID:-1000:1000}"
+  restart: "no"
+  volumes:
+    - /etc/passwd:/etc/passwd:ro
+    - /etc/group:/etc/group:ro
+    - ../../venv:/workspace/venv:ro
+    - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
+    - ../../Sources/pipeline_outputs/results:/workspace/Sources/pipeline_outputs/results:ro
+    - ../../Sources/pipeline_outputs/experiments/baseline_ablation:/workspace/Sources/pipeline_outputs/experiments/baseline_ablation:rw
+  shm_size: "2gb"
+  working_dir: /workspace
+
+x-env: &env
+  PYTHONPATH: /workspace
+  HOME: /tmp
+
+# 검증 + 실행 명령. EXPERIMENT_ID 는 service 별 environment 에서 주입.
+x-cmd: &cmd
+  - sh
+  - -c
+  - |
+    set -e
+    VENV_PY=/workspace/venv/bin/python
+    [ -x "$$VENV_PY" ] || { echo "[ablation] FATAL: venv 미마운트" >&2; exit 1; }
+    [ -f /workspace/Sources/pipeline_outputs/features/all_features.npz ] || { echo "[ablation] FATAL: all_features.npz 없음" >&2; exit 1; }
+    [ -d /workspace/Sources/pipeline_outputs/experiments/baseline_ablation ] || { echo "[ablation] FATAL: ablation 디렉터리 미마운트" >&2; exit 1; }
+    if ! touch /workspace/Sources/pipeline_outputs/experiments/baseline_ablation/.write_test 2>/dev/null; then
+      echo "[ablation] FATAL: ablation 쓰기 권한 없음 — UID 확인" >&2; exit 1
+    fi
+    rm -f /workspace/Sources/pipeline_outputs/experiments/baseline_ablation/.write_test
+    $$VENV_PY -c "import torch,sys;print(f'[$$EXPERIMENT_ID] py={sys.version.split()[0]} torch={torch.__version__} cuda={torch.cuda.is_available()} devs={torch.cuda.device_count()}')"
+    exec $$VENV_PY -m Sources.vppm.baseline_ablation.run --experiment $$EXPERIMENT_ID --skip-summary $${ABLATION_EXTRA:-}
+
+# ────────────────────────────────────────────────────────────────────
+# 30 ablation services + summary
+# ────────────────────────────────────────────────────────────────────
+services:
+  # ── Phase 1: main groups (E1~E4) — GPU 0~3 병렬 ──────────────────
+  E1:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E1
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["main", "E1"]
+
+  E2:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "1"
+      EXPERIMENT_ID: E2
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["main", "E2"]
+
+  E3:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "2"
+      EXPERIMENT_ID: E3
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["main", "E3"]
+
+  E4:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "3"
+      EXPERIMENT_ID: E4
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["main", "E4"]
+
+  # ── Phase 2: dscnn_sub (E5~E12, E23, E24) — 4-GPU rotation 3 batch ─
+  # batch 1: E5~E8 GPU 0~3 동시
+  E5:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E5
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["dscnn_sub", "E5"]
+
+  E6:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "1"
+      EXPERIMENT_ID: E6
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["dscnn_sub", "E6"]
+
+  E7:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "2"
+      EXPERIMENT_ID: E7
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["dscnn_sub", "E7"]
+
+  E8:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "3"
+      EXPERIMENT_ID: E8
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["dscnn_sub", "E8"]
+
+  # batch 2: E9~E12 — 각각 batch1 의 같은 GPU 컨테이너 완료 후 시작
+  E9:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E9
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E5:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["dscnn_sub", "E9"]
+
+  E10:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "1"
+      EXPERIMENT_ID: E10
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E6:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["dscnn_sub", "E10"]
+
+  E11:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "2"
+      EXPERIMENT_ID: E11
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E7:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["dscnn_sub", "E11"]
+
+  E12:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "3"
+      EXPERIMENT_ID: E12
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E8:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["dscnn_sub", "E12"]
+
+  # batch 3: E23, E24 — batch2 의 GPU 0,1 완료 후
+  E23:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E23
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E9:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["dscnn_sub", "E23"]
+
+  E24:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "1"
+      EXPERIMENT_ID: E24
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E10:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["dscnn_sub", "E24"]
+
+  # ── Phase 3: combined (E13) — GPU 0 단독 ──────────────────────────
+  E13:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E13
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["combined", "E13"]
+
+  # ── Phase 4: sensor_sub (E14~E22) — 4-GPU rotation 3 batch (4-4-1) ─
+  # batch 1: E14~E17
+  E14:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E14
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["sensor_sub", "E14"]
+
+  E15:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "1"
+      EXPERIMENT_ID: E15
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["sensor_sub", "E15"]
+
+  E16:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "2"
+      EXPERIMENT_ID: E16
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["sensor_sub", "E16"]
+
+  E17:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "3"
+      EXPERIMENT_ID: E17
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["sensor_sub", "E17"]
+
+  # batch 2: E18~E21 — batch 1 의 같은 GPU 컨테이너 dep
+  E18:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E18
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E14:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["sensor_sub", "E18"]
+
+  E19:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "1"
+      EXPERIMENT_ID: E19
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E15:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["sensor_sub", "E19"]
+
+  E20:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "2"
+      EXPERIMENT_ID: E20
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E16:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["sensor_sub", "E20"]
+
+  E21:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "3"
+      EXPERIMENT_ID: E21
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E17:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["sensor_sub", "E21"]
+
+  # batch 3: E22 — batch 2 의 GPU 0 dep
+  E22:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E22
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    depends_on:
+      E18:
+        condition: service_completed_successfully
+        required: false
+    profiles: ["sensor_sub", "E22"]
+
+  # ── Phase 5: scan_sub (E31~E33) — 3-GPU 병렬, batching 없음 ─────
+  E31:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E31
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["scan_sub", "E31"]
+
+  E32:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "1"
+      EXPERIMENT_ID: E32
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["scan_sub", "E32"]
+
+  E33:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "2"
+      EXPERIMENT_ID: E33
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["scan_sub", "E33"]
+
+  # ── Phase 6: cad_sub (E34~E36) — 3-GPU 병렬, batching 없음 ─────
+  E34:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+      EXPERIMENT_ID: E34
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["cad_sub", "E34"]
+
+  E35:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "1"
+      EXPERIMENT_ID: E35
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["cad_sub", "E35"]
+
+  E36:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "2"
+      EXPERIMENT_ID: E36
+      ABLATION_EXTRA: ${ABLATION_EXTRA:-}
+    command: *cmd
+    profiles: ["cad_sub", "E36"]
+
+  # ── summary 통합 재생성 (학습 없음, 디스크 스캔만) ────────────────
+  summary:
+    <<: *base
+    environment:
+      <<: *env
+      NVIDIA_VISIBLE_DEVICES: "0"
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        VENV_PY=/workspace/venv/bin/python
+        echo "[summary] rebuilding ablation/summary.md from disk"
+        $$VENV_PY -m Sources.vppm.baseline_ablation.run --rebuild-summary
+        echo "[summary] Done."
+    profiles: ["summary"]

@@ -1,5 +1,5 @@
 # VPPM-LSTM 학습 — 21 baseline 피처 + per-SV CNN+LSTM 임베딩 1-dim → 22 feat MLP
-# cache → train → evaluate 순차 실행. 산출물 → Sources/pipeline_outputs/experiments/vppm_lstm/
+# cache → train → evaluate 순차 실행. 산출물 → Sources/pipeline_outputs/experiments/vppm_lstm_single/
 #
 # 사용법 — `.env` 파일에 GPU/UID 설정해두고 (이미 docker/lstm/.env 존재) 한 줄로:
 #
@@ -36,7 +36,7 @@ services:
       # baseline features (입력) - read-only
       - ../../Sources/pipeline_outputs/features:/workspace/Sources/pipeline_outputs/features:ro
       # LSTM 산출물 - rw
-      - ../../Sources/pipeline_outputs/experiments/vppm_lstm:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm:rw
+      - ../../Sources/pipeline_outputs/experiments/vppm_lstm_single:/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_single:rw
     shm_size: "4gb"
     working_dir: /workspace
     command:
@@ -63,7 +63,7 @@ services:
             exit 1
           fi
         fi
-        LSTM_OUT=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm
+        LSTM_OUT=/workspace/Sources/pipeline_outputs/experiments/vppm_lstm_single
         if [ ! -d "$$LSTM_OUT" ]; then
           echo "[lstm] FATAL: $$LSTM_OUT 가 마운트되지 않음 (rw 필요)" >&2
           exit 1
@@ -78,8 +78,8 @@ services:
         # ── 실행 ────────────────────────────────────────────────────────
         echo "[lstm] phase=$${LSTM_PHASE} extra=$${LSTM_EXTRA}"
         if [ "$${LSTM_PHASE}" = "all" ]; then
-          $$VENV_PY -m Sources.vppm.lstm.run --all $${LSTM_EXTRA}
+          $$VENV_PY -m Sources.vppm.lstm_single.run --all $${LSTM_EXTRA}
         else
-          $$VENV_PY -m Sources.vppm.lstm.run --phase $${LSTM_PHASE} $${LSTM_EXTRA}
+          $$VENV_PY -m Sources.vppm.lstm_single.run --phase $${LSTM_PHASE} $${LSTM_EXTRA}
         fi
-        echo "[lstm] Done. Results → Sources/pipeline_outputs/experiments/vppm_lstm/results/"
+        echo "[lstm] Done. Results → Sources/pipeline_outputs/experiments/vppm_lstm_single/results/"

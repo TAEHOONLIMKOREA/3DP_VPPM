@@ -1,0 +1,33 @@
+{
+  "exp_id": "E17",
+  "drop_group": "sensor_oxygen",
+  "description": "No-Oxygen \u2014 \uc0b0\uc18c \ub18d\ub3c4 \uc81c\uac70",
+  "dropped_feature_indices": [
+    14
+  ],
+  "kept_feature_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "n_feats": 20,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}

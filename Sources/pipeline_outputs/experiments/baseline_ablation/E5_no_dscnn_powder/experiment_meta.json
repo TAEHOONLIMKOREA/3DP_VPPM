@@ -1,0 +1,33 @@
+{
+  "exp_id": "E5",
+  "drop_group": "dscnn_powder",
+  "description": "No-Powder \u2014 \ubbf8\uc6a9\uc735 \ubd84\ub9d0 \uc81c\uac70 (LOF inverse proxy)",
+  "dropped_feature_indices": [
+    3
+  ],
+  "kept_feature_indices": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "n_feats": 20,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}

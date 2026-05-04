@@ -1,0 +1,9 @@
+{
+  "exp_id": "H3",
+  "hidden_dim": 256,
+  "description": "Hidden=256 \u2014 \uc0c1\uc704 capacity \uac80\uc99d",
+  "n_feats": 21,
+  "n_params": 5889,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}

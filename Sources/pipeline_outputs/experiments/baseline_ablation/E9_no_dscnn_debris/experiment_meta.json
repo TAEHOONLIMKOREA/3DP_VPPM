@@ -1,0 +1,33 @@
+{
+  "exp_id": "E9",
+  "drop_group": "dscnn_debris",
+  "description": "No-Debris \u2014 \uc794\ud574\ubb3c \uc81c\uac70 (B1.4 \uad00\ub828)",
+  "dropped_feature_indices": [
+    7
+  ],
+  "kept_feature_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "n_feats": 20,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}

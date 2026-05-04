@@ -18,4 +18,4 @@ WORKDIR /workspace
 COPY Sources/ ./Sources/
 COPY CLAUDE.md ./
 
-CMD ["/workspace/venv/bin/python", "-m", "Sources.vppm.lstm.run", "--help"]
+CMD ["/workspace/venv/bin/python", "-m", "Sources.vppm.lstm_single.run", "--help"]

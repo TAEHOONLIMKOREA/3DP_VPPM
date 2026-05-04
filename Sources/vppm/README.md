@@ -159,7 +159,7 @@ Sources/vppm/
 │   ├── view_stacks_example.py
 │   ├── view_per_build.py
 │   └── export_crop_png.py
-└── baseline_ablation_with_lstm/
+└── baseline_ablation/
     └── run.py                      # 피처 그룹별 ablation 실험 (21-feat MLP)
 ```
 
@@ -179,7 +179,7 @@ Sources/pipeline_outputs/
 │   ├── stacks_all.h5                       # (36047, 70, 9, 8, 8) float16
 │   └── per_build/stacks_B1.{1..5}.h5       # H5Web 뷰용 분리본 (float32+gzip)
 ├── models/, results/                       # 원본 VPPM 산출물 → origin/MODEL.md
-└── models_lstm/, lstm_embeddings/, results/vppm_lstm/  # → lstm/MODEL.md
+└── models_lstm/, lstm_embeddings/, results/vppm_lstm_single/  # → lstm/MODEL.md
 ```
 
 ---

@@ -222,3 +222,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# 50MB 초과 LSTM 캐시 파일 (자동 등록 — /commit 워크플로)
+Sources/pipeline_outputs/experiments/vppm_lstm_single/cache/crop_stacks_B1.1.h5
+Sources/pipeline_outputs/experiments/vppm_lstm_single/cache/crop_stacks_B1.5.h5

@@ -1,0 +1,33 @@
+{
+  "exp_id": "E7",
+  "drop_group": "dscnn_recoater_streaking",
+  "description": "No-Streaking \u2014 \ub9ac\ucf54\ud130 \uc904\ubb34\ub2ac \uc81c\uac70 (B1.5 \ud575\uc2ec \ud6c4\ubcf4)",
+  "dropped_feature_indices": [
+    5
+  ],
+  "kept_feature_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "n_feats": 20,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}

@@ -1,6 +1,6 @@
 # stats_overhang — distance_from_overhang 피처 단일 통계 산출
 #
-# vppm-ablation:gpu 이미지(docker/ablation/Dockerfile)를 재사용.
+# vppm-ablation:gpu 이미지(docker/baseline_ablation/Dockerfile)를 재사용.
 # GPU 의존 없음(CPU/numpy/scipy/h5py). nvidia runtime 은 기존 패턴 유지.
 #
 # 사용법:
@@ -18,7 +18,7 @@ services:
   stats-overhang:
     build:
       context: ../..
-      dockerfile: docker/ablation/Dockerfile      # 공용 이미지 재사용
+      dockerfile: docker/baseline_ablation/Dockerfile      # 공용 이미지 재사용
     image: vppm-ablation:gpu
     runtime: nvidia
     user: "${UID_GID:-1000:1000}"

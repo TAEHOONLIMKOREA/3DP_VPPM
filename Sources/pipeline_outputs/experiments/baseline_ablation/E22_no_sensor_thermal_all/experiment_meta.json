@@ -1,0 +1,33 @@
+{
+  "exp_id": "E22",
+  "drop_group": "sensor_thermal_all",
+  "description": "No-ThermalAll \u2014 \uc628\ub3c4 2\ucc44\ub110(plate/flow) \uc77c\uad04 \uc81c\uac70",
+  "dropped_feature_indices": [
+    15,
+    16
+  ],
+  "kept_feature_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    17,
+    18,
+    19,
+    20
+  ],
+  "n_feats": 19,
+  "n_valid_supervoxels": 19313,
+  "n_unique_samples": 6373
+}
